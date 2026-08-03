@@ -8,7 +8,7 @@ CPU · RAM · disk · network · temperature · Docker · SSH attempts · incomi
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/gonzxa/go-data)](https://goreportcard.com/report/github.com/gonzxa/go-data)
 [![Docker Image](https://img.shields.io/docker/v/gonzxa/go-data?label=docker&sort=semver)](https://hub.docker.com/r/gonzxa/go-data)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/gonzxa/go-data)](go.mod)
+[![Go Version](https://img.shields.io/badge/go-1.22-00ADD8.svg?logo=go)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 </div>
