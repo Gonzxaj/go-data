@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    image: gonzxa/go-data:latest
+    ports:
+      - "19245:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - /proc:/hostproc:ro
+      - app-data:/app/data
+    environment:
+      - USE_INFLUX=true
+      - INFLUX_URL=http://influx:8086
+      - INFLUX_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - INFLUX_ORG=${INFLUXDB_ORG}
+      - INFLUX_BUCKET=${INFLUXDB_BUCKET}
+      - DOCKER_ENABLED=true
+      - SSH_WATCH_ENABLED=true
+      - CONN_WATCH_ENABLED=true
+      - CONN_WATCH_AUTO=true
+      - AUTH_ENABLED=true
+      - AUTH_USER=${AUTH_USER}
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+    depends_on:
+      - influx
+  influx:
+    image: influxdb:2.7
+    ports:
+      - "19246:8086"
+    volumes:
+      - influx-data:/var/lib/influxdb2
+      - influx-config:/etc/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+
+volumes:
+  app-data:
+  influx-data:
+  influx-config:

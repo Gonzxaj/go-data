@@ -1,0 +1,18 @@
+{
+  "use_influx": true,
+  "influx_url": "http://influx:8086",
+  "token": "my-token",
+  "org": "my-org",
+  "bucket": "metrics",
+
+  "docker_enabled": true,
+  "data_dir": "./data",
+
+  "ssh_watch_enabled": true,
+  "ssh_log_path": "",
+
+  "conn_watch_enabled": true,
+  "conn_watch_auto": true,
+  "conn_watch_ports": [],
+  "host_proc_path": ""
+}

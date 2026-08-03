@@ -1,0 +1,2123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Netdata — Estado del servidor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080a;
+    --bg-2: #0a0c10;
+    --panel: #0f1116;
+    --panel-2: #12151b;
+    --card: #14171d;
+    --card-hover: #191d24;
+    --line: #232830;
+    --line-soft: rgba(255,255,255,.055);
+    --text: #f2f4f7;
+    --muted: #8b95a3;
+    --muted-2: #626c7a;
+
+    --ok: #21e0a0;      --ok-rgb: 33,224,160;
+    --warn: #ffc247;    --warn-rgb: 255,194,71;
+    --crit: #ff5f74;    --crit-rgb: 255,95,116;
+
+    --a-cpu: #6d9bff;     --a-cpu-rgb: 109,155,255;
+    --a-ram: #bb8cff;     --a-ram-rgb: 187,140,255;
+    --a-disk: #ffc247;    --a-disk-rgb: 255,194,71;
+    --a-net: #34dfe4;     --a-net-rgb: 52,223,228;
+    --a-docker: #ff9166;  --a-docker-rgb: 255,145,102;
+    --a-sec: #ff6a95;     --a-sec-rgb: 255,106,149;
+    --a-sys: #9aa6b4;     --a-sys-rgb: 154,166,180;
+
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+
+    --ring: 0 0 0 3px rgba(var(--accent-rgb, var(--a-cpu-rgb)), .28);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md: 0 10px 30px -12px rgba(0,0,0,.75);
+    --shadow-lg: 0 24px 60px -20px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scrollbar-color: var(--line) transparent; background: var(--bg); }
+
+  body {
+    margin: 0;
+    padding: 0 0 64px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background:
+      radial-gradient(1100px 560px at 6% -12%, rgba(109,155,255,.10), transparent 60%),
+      radial-gradient(820px 520px at 100% -4%, rgba(255,145,102,.07), transparent 58%),
+      linear-gradient(180deg, var(--bg-2), var(--bg) 40%);
+    background-attachment: fixed;
+    color: var(--text);
+    font: 14px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body > .panel,
+  body > .tab-panel { max-width: 1320px; margin-left: auto; margin-right: auto; }
+
+  ::selection { background: rgba(109,155,255,.35); }
+
+  :where(button, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(109,155,255,.35);
+  }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #262b33; border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #333a44; background-clip: padding-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ---------- tooltip (CSS only, via data-tip) ---------- */
+
+  [data-tip] { position: relative; }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: rgba(10,12,15,.96);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 10.5px;
+    font-family: var(--mono);
+    line-height: 1.4;
+    padding: 6px 9px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .14s ease, transform .14s ease;
+    z-index: 30;
+    box-shadow: var(--shadow-md);
+  }
+  [data-tip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- header ---------- */
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex-wrap: wrap;
+    margin: 0 0 20px;
+    padding: 14px max(22px, calc(50% - 660px));
+    background: rgba(9,11,14,.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .topbar h1 {
+    font-size: 15.5px;
+    font-weight: 650;
+    margin: 0;
+    letter-spacing: -.015em;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 0 rgba(var(--ok-rgb),.6);
+    animation: pulse 2.4s infinite;
+    flex: none;
+  }
+  .dot.down { background: var(--crit); animation: none; box-shadow: 0 0 10px rgba(var(--crit-rgb),.6); }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--ok-rgb),.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(var(--ok-rgb),0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--ok-rgb),0); }
+  }
+  .host {
+    color: var(--muted);
+    font-size: 11px;
+    font-family: var(--mono);
+    margin-left: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--line-soft);
+    border-radius: 999px;
+    background: rgba(255,255,255,.03);
+  }
+
+  /* ---------- banda de alertas ---------- */
+
+  .alert-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0 max(22px, calc(50% - 660px)); }
+  .alert-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 650;
+    padding: 6px 13px;
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+  }
+  .alert-chip.warn { background: rgba(var(--warn-rgb), .13); color: var(--warn); border: 1px solid rgba(var(--warn-rgb), .32); }
+  .alert-chip.crit {
+    background: rgba(var(--crit-rgb), .15);
+    color: var(--crit);
+    border: 1px solid rgba(var(--crit-rgb), .38);
+    animation: alertPulse 1.8s infinite;
+  }
+  @keyframes alertPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--crit-rgb), .3); }
+    50% { box-shadow: 0 0 0 6px rgba(var(--crit-rgb), 0); }
+  }
+
+  /* ---------- tabs ---------- */
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    margin: 0 0 22px max(22px, calc(50% - 660px));
+    background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    width: fit-content;
+    max-width: calc(100% - 44px);
+    overflow-x: auto;
+    box-shadow: var(--shadow-sm);
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .005em;
+    padding: 8px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+  .tabs button svg { opacity: .75; transition: opacity .18s ease, transform .18s ease; }
+  .tabs button:hover { color: var(--text); background: rgba(255,255,255,.045); }
+  .tabs button:hover svg { opacity: 1; }
+  .tabs button.active {
+    color: var(--accent, var(--a-sys));
+    background: rgba(var(--accent-rgb, var(--a-sys-rgb)), .13);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, var(--a-sys-rgb)), .28);
+  }
+  .tabs button.active svg { opacity: 1; }
+
+  .tabs-fab { display: none; }
+
+  /* ---------- sections ---------- */
+
+  .panel {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.02), transparent 120px),
+      var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 22px 24px;
+    margin-bottom: 22px;
+    box-shadow: var(--shadow-md);
+    animation: panelIn .28s ease both;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 4px;
+  }
+  .icon-badge {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: rgba(var(--accent-rgb, var(--a-sys-rgb)), .13);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, var(--a-sys-rgb)), .22);
+    color: var(--accent, var(--a-sys));
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .panel-head h2 {
+    font-size: 15px;
+    font-weight: 650;
+    margin: 0;
+    letter-spacing: -.015em;
+  }
+  .panel-head .count {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 3px 9px;
+    border: 1px solid var(--line-soft);
+    border-radius: 999px;
+  }
+  .panel-note {
+    color: var(--muted-2);
+    font-size: 11.5px;
+    margin: 4px 0 14px;
+    max-width: 70ch;
+  }
+  .subhead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .11em;
+    color: var(--muted-2);
+    margin: 26px 0 10px;
+  }
+  .subhead::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--line), transparent);
+  }
+  .subhead:first-of-type { margin-top: 6px; }
+
+  /* ---------- subpanel ---------- */
+
+  .subpanel {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 18px 20px;
+    margin-top: 20px;
+  }
+  .subpanel-title {
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    margin: 0;
+  }
+  .subpanel .subhead:first-of-type { margin-top: 18px; }
+
+  /* ---------- historial de sesiones de uptime ---------- */
+
+  .uphist-list { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  .uphist-row { display: flex; align-items: center; gap: 12px; }
+  .uphist-row .uh-label {
+    flex: 0 0 58px;
+    color: var(--muted-2);
+    font-size: 11px;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+  .uphist-row .uh-bar-wrap {
+    flex: 1; height: 8px; border-radius: 99px;
+    background: rgba(255,255,255,.05);
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+    overflow: hidden;
+  }
+  .uphist-row .uh-bar { display: block; height: 100%; border-radius: 99px; transition: width .4s ease; }
+  .uphist-row.ongoing .uh-label { color: var(--a-cpu); font-weight: 650; }
+  .uphist-row .uh-dur {
+    flex: 0 0 auto;
+    min-width: 56px;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  /* ---------- metric cards ---------- */
+
+  .card {
+    position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,.022), transparent 60%), var(--card);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 14px 14px 12px;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg,
+      rgba(var(--accent-rgb, var(--a-sys-rgb)), .9),
+      rgba(var(--accent-rgb, var(--a-sys-rgb)), .1));
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .card:hover {
+    background: var(--card-hover);
+    border-color: rgba(var(--accent-rgb, var(--a-sys-rgb)), .34);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px -16px rgba(0,0,0,.9);
+  }
+  .card:hover::before { opacity: 1; }
+  .card.err { opacity: .38; }
+  .card.card-wide { grid-column: span 2; }
+  .label {
+    color: var(--muted-2);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+  }
+  .value {
+    margin-top: 8px;
+    font-size: 25px;
+    font-weight: 650;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    white-space: nowrap;
+    transition: color .25s ease;
+  }
+  .value small { font-size: 12px; font-weight: 400; color: var(--muted); font-family: var(--sans); letter-spacing: 0; }
+  .sub {
+    color: var(--muted);
+    font-size: 11.5px;
+    font-family: var(--mono);
+    margin-top: 4px;
+    min-height: 14px;
+  }
+  .bar {
+    height: 5px;
+    border-radius: 99px;
+    background: rgba(255,255,255,.055);
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+    overflow: hidden;
+    margin-top: 11px;
+  }
+  .bar > span {
+    display: block; height: 100%; width: 0;
+    border-radius: 99px;
+    transition: width .35s ease, background .3s ease;
+    background: var(--ok);
+  }
+
+  /* ---------- interactive sparklines ---------- */
+
+  .spark-wrap { position: relative; margin-top: 9px; }
+  .spark { display: block; width: 100%; height: 32px; cursor: crosshair; overflow: visible; }
+  .sp-guide { stroke: rgba(255,255,255,.28); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; display: none; }
+  .sp-dot { display: none; filter: drop-shadow(0 0 4px rgba(0,0,0,.7)); }
+  .sp-area { opacity: .9; }
+  .sp-tip {
+    position: absolute;
+    top: -4px;
+    transform: translate(-50%, -100%);
+    background: rgba(10,12,15,.96);
+    border: 1px solid var(--line);
+    padding: 5px 9px;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-family: var(--mono);
+    white-space: nowrap;
+    pointer-events: none;
+    display: none;
+    z-index: 5;
+    box-shadow: var(--shadow-md);
+  }
+  .sp-tip strong { color: var(--text); font-weight: 650; }
+  .sp-tip span { color: var(--muted); margin-left: 6px; }
+
+  /* ---------- info list cards ---------- */
+
+  .info-list { display: flex; flex-direction: column; margin-top: 10px; }
+  .info-list.scroll { max-height: 250px; overflow-y: auto; padding-right: 4px; }
+  .info-list .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .info-list .row:last-child { border-bottom: none; }
+  .info-list .row:hover span:first-child { color: var(--text); }
+  .info-list .row span:first-child { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color .15s ease; }
+  .info-list .row span:last-child { flex: none; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* ---------- docker container cards ---------- */
+
+  .containers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(265px, 100%), 1fr));
+    gap: 13px;
+    margin-top: 14px;
+  }
+  .ccard {
+    background: linear-gradient(180deg, rgba(255,255,255,.022), transparent 60%), var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 15px;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  }
+  .ccard:hover {
+    background: var(--card-hover);
+    border-color: rgba(var(--a-docker-rgb), .3);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -18px rgba(0,0,0,.9);
+  }
+  .ccard.err { opacity: .38; }
+
+  .cc-head { display: flex; align-items: center; gap: 8px; }
+  .cc-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--muted-2);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  .cc-dot.running { background: var(--ok); animation: pulse-docker 2.4s infinite; }
+  @keyframes pulse-docker {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--ok-rgb),.45); }
+    70%  { box-shadow: 0 0 0 7px rgba(var(--ok-rgb),0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--ok-rgb),0); }
+  }
+  .cname {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cc-restart {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 650;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(var(--warn-rgb), .13);
+    color: var(--warn);
+    flex: none;
+  }
+  .cc-restart.crit { background: rgba(var(--crit-rgb), .14); color: var(--crit); }
+
+  .cc-meta { display: flex; align-items: center; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+  .image-pill {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line-soft);
+    padding: 3px 9px;
+    border-radius: 999px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .cc-status { color: var(--muted-2); font-size: 11px; font-family: var(--mono); }
+  .cc-health {
+    font-size: 10px;
+    font-family: var(--mono);
+    font-weight: 650;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .cc-health.healthy { background: rgba(var(--ok-rgb),.13); color: var(--ok); }
+  .cc-health.unhealthy { background: rgba(var(--crit-rgb),.14); color: var(--crit); }
+  .cc-health.starting { background: rgba(var(--warn-rgb),.13); color: var(--warn); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    margin-top: 13px;
+  }
+  .stat-tile {
+    background: rgba(255,255,255,.028);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 9px 11px;
+  }
+  .stat-tile .st-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted-2);
+  }
+  .stat-tile .st-value {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stat-tile .st-bar {
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(255,255,255,.06);
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .stat-tile .st-bar > span { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--ok); transition: width .35s ease; }
+
+  .stat-line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-top: 9px;
+  }
+  .stat-line .sl-label { color: var(--muted-2); font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; width: 32px; flex: none; }
+
+  .cc-ports { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+  .port-chip {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 650;
+    background: rgba(var(--a-docker-rgb), .1);
+    border: 1px solid rgba(var(--a-docker-rgb), .22);
+    color: var(--text);
+    padding: 3px 10px;
+    border-radius: 999px;
+    cursor: default;
+  }
+  .port-chip.unpublished {
+    color: var(--muted-2);
+    background: rgba(255,255,255,.03);
+    border-color: var(--line-soft);
+  }
+  .port-chip.more {
+    background: rgba(255,255,255,.05);
+    border-color: var(--line-soft);
+    color: var(--muted);
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .port-chip.more:hover { color: var(--text); background: rgba(255,255,255,.1); }
+
+  .empty-note { color: var(--muted-2); font-size: 12.5px; padding: 8px 2px; }
+
+  /* ---------- modal ---------- */
+
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(4,5,6,.68);
+    backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .modal-backdrop.open { display: flex; animation: fadeIn .16s ease both; }
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  .modal-box {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px 20px;
+    width: 470px;
+    max-width: 100%;
+    max-height: 78vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn .2s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes modalIn { from { opacity: 0; transform: translateY(10px) scale(.97) } to { opacity: 1; transform: none } }
+  .modal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .modal-head h3 { font-size: 13.5px; font-weight: 650; margin: 0; font-family: var(--mono); }
+  .modal-head .close {
+    margin-left: auto;
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 18px; line-height: 1; padding: 3px 8px; border-radius: 8px;
+    transition: background .15s ease, color .15s ease;
+  }
+  .modal-head .close:hover { color: var(--text); background: rgba(255,255,255,.07); }
+  .modal-sub { color: var(--muted-2); font-size: 11px; margin: 2px 0 12px; }
+  .modal-body {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001s !important; transition-duration: .001s !important; }
+  }
+
+  /* ---------- responsive (mobile) ---------- */
+
+  @media (max-width: 640px) {
+    body { padding: 0 0 44px; font-size: 13px; }
+    body > .panel, body > .tab-panel { margin-left: 12px; margin-right: 12px; }
+    .topbar { gap: 8px; margin-bottom: 16px; padding: 12px 14px; }
+    .topbar h1 { font-size: 14.5px; }
+    .host { margin-left: 0; flex-basis: 100%; font-size: 10.5px; text-align: center; }
+    .alert-bar { padding: 0 12px; }
+
+    .tabs {
+      position: fixed;
+      top: 50%;
+      right: 14px;
+      left: auto;
+      margin: 0;
+      width: auto;
+      max-width: 68vw;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 3px;
+      overflow: visible;
+      background: rgba(15,17,22,.94);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-50%) translateX(10px) scale(.96);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 70;
+    }
+    .tabs.open {
+      transform: translateY(-50%) translateX(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .tabs button { padding: 10px 13px; font-size: 12px; justify-content: flex-start; white-space: nowrap; }
+
+    .tabs-fab {
+      display: flex;
+      position: fixed;
+      top: 50%;
+      right: 14px;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 48px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(15,17,22,.94);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--line);
+      color: var(--text);
+      box-shadow: var(--shadow-lg);
+      z-index: 71;
+      cursor: pointer;
+      transition: opacity .16s ease, transform .16s ease;
+    }
+    .tabs-fab.hide { opacity: 0; transform: translateY(-50%) scale(.85); pointer-events: none; }
+
+    .panel { padding: 16px 15px 18px; border-radius: 14px; }
+    .panel-head { flex-wrap: wrap; }
+
+    .grid { gap: 9px; margin-top: 12px; }
+    .containers { gap: 10px; margin-top: 12px; }
+
+    .card { padding: 12px 12px 10px; }
+    .value { font-size: 21px; }
+
+    .ccard { padding: 13px; }
+    .stat-grid { gap: 7px; }
+
+    .modal-backdrop { padding: 12px; }
+    .modal-box { padding: 15px 16px 17px; max-height: 85vh; }
+  }
+
+  @media (max-width: 400px) {
+    .grid { grid-template-columns: repeat(auto-fit, minmax(min(142px, 100%), 1fr)); }
+  }
+
+  /* ============================================================
+     LAYER "ONDA" — identidad visual: aurora + malla + terminal
+     Solo estilos. No toca IDs, clases ni JS.
+     ============================================================ */
+
+  :root {
+    --sans: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --r-lg: 18px;
+    --r-md: 14px;
+    --glow: 0 0 0 1px rgba(var(--accent-rgb, var(--a-cpu-rgb)), .28),
+            0 18px 50px -26px rgba(var(--accent-rgb, var(--a-cpu-rgb)), .55);
+  }
+
+  /* --- fondo: aurora animada + malla técnica ---------------- */
+  body {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background:
+      radial-gradient(900px 520px at 8% -14%, rgba(109,155,255,.13), transparent 62%),
+      radial-gradient(760px 480px at 98% -6%, rgba(255,145,102,.09), transparent 60%),
+      radial-gradient(900px 700px at 50% 118%, rgba(187,140,255,.10), transparent 62%),
+      linear-gradient(180deg, #08090d, #06070a 45%);
+    letter-spacing: -0.005em;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20vh -10vw;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(420px 420px at 20% 30%, rgba(52,223,228,.13), transparent 65%),
+      radial-gradient(460px 460px at 78% 18%, rgba(109,155,255,.14), transparent 66%),
+      radial-gradient(380px 380px at 60% 82%, rgba(255,106,149,.10), transparent 66%);
+    filter: blur(30px);
+    animation: aurora 26s ease-in-out infinite alternate;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(1200px 800px at 50% 0%, #000 12%, transparent 78%);
+  }
+  @keyframes aurora {
+    0%   { transform: translate3d(-2%, -1%, 0) scale(1); }
+    50%  { transform: translate3d(3%, 2%, 0) scale(1.08); }
+    100% { transform: translate3d(-1%, 3%, 0) scale(1.03); }
+  }
+
+  /* --- topbar con brillo y línea viva ---------------------- */
+  .topbar {
+    background: linear-gradient(180deg, rgba(12,14,19,.86), rgba(8,10,14,.66));
+    backdrop-filter: blur(18px) saturate(160%);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    box-shadow: 0 18px 40px -34px rgba(0,0,0,.95);
+  }
+  .topbar::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(109,155,255,.55), rgba(52,223,228,.45), rgba(255,145,102,.4), transparent);
+    opacity: .8;
+  }
+  .topbar h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(96deg, #ffffff, #b8c6dd 70%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .topbar .host {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .01em;
+    padding: 4px 9px;
+    border-radius: 99px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.03);
+  }
+  #dot {
+    position: relative;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  #dot::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 99px;
+    border: 1px solid currentColor;
+    opacity: .35;
+    animation: ping 2.4s cubic-bezier(.2,.7,.3,1) infinite;
+  }
+  @keyframes ping {
+    0%   { transform: scale(.6); opacity: .5; }
+    70%  { transform: scale(1.35); opacity: 0; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+
+  /* --- tabs: cápsula flotante ----------------------------- */
+  .tabs {
+    gap: 4px;
+    padding: 5px;
+    border-radius: 99px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: linear-gradient(180deg, rgba(18,21,27,.9), rgba(12,14,19,.72));
+    backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 20px 44px -32px rgba(0,0,0,.9);
+    max-width: 1320px;
+    margin-left: auto;
+    margin-right: auto;
+    width: fit-content;
+  }
+  .tabs button {
+    border-radius: 99px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: -0.01em;
+    border: 1px solid transparent;
+    background: transparent;
+    transition: color .18s ease, background .22s ease, box-shadow .22s ease, transform .18s ease;
+  }
+  .tabs button:hover { transform: translateY(-1px); }
+  .tabs button.active {
+    color: #fff;
+    background:
+      linear-gradient(180deg, rgba(var(--accent-rgb), .22), rgba(var(--accent-rgb), .08));
+    border-color: rgba(var(--accent-rgb), .38);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.14),
+      0 10px 26px -14px rgba(var(--accent-rgb), .8);
+  }
+  .tabs button.active svg { color: rgb(var(--accent-rgb)); filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), .7)); }
+
+  /* --- paneles: vidrio con acento --------------------------- */
+  .panel {
+    position: relative;
+    border-radius: var(--r-lg);
+    border: 1px solid rgba(255,255,255,.065);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.008) 30%),
+      rgba(13,15,20,.72);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 30px 70px -50px rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.05);
+    overflow: hidden;
+  }
+  .panel::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), .85), transparent);
+    opacity: .75;
+  }
+  .panel-head h2 {
+    font-family: var(--sans);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+  .icon-badge {
+    border-radius: 12px;
+    color: rgb(var(--accent-rgb));
+    border: 1px solid rgba(var(--accent-rgb), .3);
+    background: radial-gradient(120% 120% at 30% 10%, rgba(var(--accent-rgb), .3), rgba(var(--accent-rgb), .06));
+    box-shadow: 0 8px 22px -14px rgba(var(--accent-rgb), .9), inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  .subhead {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    color: var(--muted-2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .subhead::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,.09), transparent);
+  }
+  .subpanel {
+    border-radius: var(--r-md);
+    border: 1px solid rgba(255,255,255,.055);
+    background: rgba(255,255,255,.018);
+  }
+  .subpanel-title {
+    font-family: var(--sans);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* --- cards: sheen + números protagonistas ---------------- */
+  .card {
+    position: relative;
+    border-radius: var(--r-md);
+    border: 1px solid rgba(255,255,255,.07);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.006) 42%),
+      rgba(16,19,25,.9);
+    transition: transform .2s cubic-bezier(.2,.7,.3,1), box-shadow .24s ease, border-color .2s ease;
+    overflow: hidden;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(var(--accent-rgb), .32);
+    box-shadow: var(--glow);
+  }
+  .card > .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--muted-2);
+  }
+  .value {
+    font-family: var(--mono);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #ffffff, rgba(255,255,255,.66));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+  }
+  .value small { color: var(--muted); -webkit-text-fill-color: var(--muted); }
+  .sub { color: var(--muted-2); font-size: 11.5px; }
+
+  /* barras con glow del acento */
+  .bar, .st-bar, .uh-bar-wrap { border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.055); }
+  .bar > span, .st-bar > span, .uh-bar {
+    border-radius: 99px;
+    box-shadow: 0 0 14px -2px currentColor;
+  }
+  .bar > span {
+    background-image: linear-gradient(90deg, rgba(255,255,255,.18), transparent 60%);
+  }
+
+  /* sparkline más presente */
+  .sp-line { stroke-linecap: round; filter: drop-shadow(0 2px 6px rgba(var(--accent-rgb), .45)); }
+  .sp-dot { filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), .9)); }
+
+  /* --- listas / filas ------------------------------------- */
+  .row, .info-list > * , .uphist-row {
+    border-radius: 10px;
+    transition: background .16s ease, transform .16s ease;
+  }
+  .row:hover, .uphist-row:hover { background: rgba(255,255,255,.035); }
+  .row > span:last-child, .st-value, .uh-dur {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --- contenedores docker -------------------------------- */
+  .containers > * {
+    border-radius: var(--r-md);
+    border: 1px solid rgba(255,255,255,.07);
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.006) 40%), rgba(16,19,25,.9);
+    transition: transform .2s ease, box-shadow .22s ease, border-color .2s ease;
+  }
+  .containers > *:hover {
+    transform: translateY(-2px);
+    border-color: rgba(var(--a-docker-rgb), .3);
+    box-shadow: 0 18px 44px -28px rgba(var(--a-docker-rgb), .6);
+  }
+  .cname { font-family: var(--sans); font-weight: 700; letter-spacing: -0.02em; }
+  .image-pill, .port-chip, .cc-restart, .cc-health, .alert-chip {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    border-radius: 99px;
+  }
+
+  /* --- alertas -------------------------------------------- */
+  .alert-bar { max-width: 1320px; margin-left: auto; margin-right: auto; }
+  .alert-chip {
+    border-width: 1px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    backdrop-filter: blur(6px);
+  }
+
+  /* --- modal ---------------------------------------------- */
+  .modal-backdrop { backdrop-filter: blur(10px) saturate(120%); background: rgba(4,5,8,.66); }
+  .modal-box {
+    border-radius: var(--r-lg);
+    border: 1px solid rgba(255,255,255,.09);
+    background: linear-gradient(180deg, rgba(22,26,33,.98), rgba(13,15,20,.98));
+    box-shadow: 0 40px 100px -30px rgba(0,0,0,.9);
+  }
+
+  /* --- fab ------------------------------------------------ */
+  .tabs-fab {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: linear-gradient(180deg, rgba(24,28,36,.95), rgba(14,17,22,.95));
+    box-shadow: 0 16px 34px -18px rgba(0,0,0,.9);
+  }
+
+  @media (max-width: 720px) {
+    .tabs { border-radius: 16px; width: auto; }
+    .tabs button { border-radius: 12px; }
+    body::after { background-size: 34px 34px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before { animation: none; }
+    #dot::after { animation: none; }
+    .card:hover, .containers > *:hover, .tabs button:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="dot" id="dot"></span>
+  <h1>Estado del servidor</h1>
+  <span class="host" id="status">conectando…</span>
+</div>
+
+<div class="alert-bar" id="alertBar" hidden></div>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="general" class="active" style="--accent: var(--a-sys); --accent-rgb: var(--a-sys-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>General
+  </button>
+  <button data-tab="cpu" style="--accent: var(--a-cpu); --accent-rgb: var(--a-cpu-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>CPU
+  </button>
+  <button data-tab="ram" style="--accent: var(--a-ram); --accent-rgb: var(--a-ram-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/><path d="M6 9v6M10 9v6M14 9v6M18 9v6"/></svg>Memoria
+  </button>
+  <button data-tab="disk" style="--accent: var(--a-disk); --accent-rgb: var(--a-disk-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Disco
+  </button>
+  <button data-tab="net" style="--accent: var(--a-net); --accent-rgb: var(--a-net-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8.5a15 15 0 0 1 20 0"/><path d="M5.5 12a10 10 0 0 1 13 0"/><path d="M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1"/></svg>Red
+  </button>
+  <button data-tab="docker" style="--accent: var(--a-docker); --accent-rgb: var(--a-docker-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Contenedores
+  </button>
+  <button data-tab="security" style="--accent: var(--a-sec); --accent-rgb: var(--a-sec-rgb)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>Seguridad
+  </button>
+</nav>
+
+<button class="tabs-fab" id="tabsFab" aria-label="Abrir navegación" aria-controls="tabs" aria-expanded="false">
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+</button>
+
+<section class="panel tab-panel" data-tab="general" style="--accent: var(--a-sys); --accent-rgb: var(--a-sys-rgb)">
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+    <h2>General</h2>
+  </div>
+  <div class="grid" id="grid-sys"></div>
+
+  <div class="subhead">Historial de sesiones (uptime hasta cada reinicio)</div>
+  <div class="uphist-list" id="uptime-history"><span class="empty-note" style="padding:0">cargando…</span></div>
+
+  <div class="subpanel">
+    <h3 class="subpanel-title">Hardware</h3>
+
+    <div class="subhead">Información del sistema</div>
+    <div class="info-list" id="sysinfo-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+
+    <div class="subhead">Almacenamiento (discos físicos)</div>
+    <div class="info-list" id="disks-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+
+    <div class="subhead">Dispositivos conectados (USB)</div>
+    <div class="info-list" id="usb-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+  </div>
+</section>
+
+<section class="panel tab-panel" data-tab="cpu" style="--accent: var(--a-cpu); --accent-rgb: var(--a-cpu-rgb)" hidden>
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></span>
+    <h2>CPU</h2>
+  </div>
+  <div class="grid" id="grid-cpu"></div>
+
+  <div class="subhead">Top procesos por CPU</div>
+  <div class="info-list" id="apps-cpu-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+</section>
+
+<section class="panel tab-panel" data-tab="ram" style="--accent: var(--a-ram); --accent-rgb: var(--a-ram-rgb)" hidden>
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/><path d="M6 9v6M10 9v6M14 9v6M18 9v6"/></svg></span>
+    <h2>Memoria</h2>
+  </div>
+  <div class="grid" id="grid-ram"></div>
+</section>
+
+<section class="panel tab-panel" data-tab="disk" style="--accent: var(--a-disk); --accent-rgb: var(--a-disk-rgb)" hidden>
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+    <h2>Disco</h2>
+  </div>
+  <div class="grid" id="grid-disk"></div>
+</section>
+
+<section class="panel tab-panel" data-tab="net" style="--accent: var(--a-net); --accent-rgb: var(--a-net-rgb)" hidden>
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8.5a15 15 0 0 1 20 0"/><path d="M5.5 12a10 10 0 0 1 13 0"/><path d="M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1"/></svg></span>
+    <h2>Red</h2>
+  </div>
+  <div class="grid" id="grid-net"></div>
+</section>
+
+<section class="panel tab-panel" data-tab="docker" style="--accent: var(--a-docker); --accent-rgb: var(--a-docker-rgb)" hidden>
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span>
+    <h2>Contenedores</h2>
+    <span class="count" id="docker-count"></span>
+  </div>
+  <p class="panel-note" id="docker-note">estado, puertos, imagen y tamaño vía la API de este servidor</p>
+
+  <div class="subhead">Sockets y puertos del host</div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))">
+    <div class="card">
+      <div class="label">Sockets</div>
+      <div class="info-list" id="sockets-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+    </div>
+    <div class="card">
+      <div class="label">Puertos publicados por contenedores</div>
+      <div class="info-list scroll" id="published-ports-list"><span class="empty-note" style="padding:0">buscando…</span></div>
+    </div>
+  </div>
+
+  <div class="subhead">Contenedores</div>
+  <div class="containers" id="grid-docker"><div class="empty-note">buscando contenedores…</div></div>
+</section>
+
+<section class="panel tab-panel" data-tab="security" style="--accent: var(--a-sec); --accent-rgb: var(--a-sec-rgb)" hidden>
+  <div class="panel-head">
+    <span class="icon-badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></span>
+    <h2>Seguridad</h2>
+  </div>
+  <p class="panel-note">intentos de acceso por SSH y conexiones entrantes a puertos vigilados (ej. servidores de juego)</p>
+
+  <div class="subhead">Intentos de SSH</div>
+  <div class="info-list scroll" id="ssh-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+
+  <div class="subhead">Conexiones entrantes vigiladas</div>
+  <div class="info-list scroll" id="conn-list"><span class="empty-note" style="padding:0">cargando…</span></div>
+</section>
+
+<div class="modal-backdrop" id="ports-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="ports-modal-title"></h3>
+      <button class="close" id="ports-modal-close" aria-label="Cerrar">×</button>
+    </div>
+    <p class="modal-sub" id="ports-modal-sub"></p>
+    <div class="modal-body" id="ports-modal-body"></div>
+  </div>
+</div>
+
+<script>
+const HISTORY_POINTS = 60;
+const REFRESH_MS = 2000;
+const REDISCOVER_EVERY = 15; // re-lee host info / uptime sessions cada 15 ticks (~30s)
+
+// ---------- helpers ----------
+
+const last = (arr) => (arr && arr.length ? arr[arr.length - 1] : 0);
+const clamp = (v) => Math.max(0, Math.min(100, v));
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const num = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "—");
+
+function color(pct) {
+  if (pct >= 90) return "var(--crit)";
+  if (pct >= 70) return "var(--warn)";
+  return "var(--ok)";
+}
+
+// Igual que color(), pero con umbrales propios — para métricas donde 90/70%
+// no tiene sentido (iowait, steal, latencia en ms, errores/s, etc).
+function colorCustom(v, warnAt, critAt) {
+  if (v >= critAt) return "var(--crit)";
+  if (v >= warnAt) return "var(--warn)";
+  return "var(--ok)";
+}
+
+// Marca la última muestra como "pico anómalo" si se aleja mucho del
+// comportamiento reciente (media + 3 desvíos, y al menos 50% más que la media).
+function detectSpike(spark) {
+  if (!spark || spark.length < 8) return false;
+  const lastVal = spark[spark.length - 1];
+  const rest = spark.slice(0, -1);
+  const mean = rest.reduce((a, b) => a + b, 0) / rest.length;
+  const variance = rest.reduce((a, b) => a + (b - mean) ** 2, 0) / rest.length;
+  const std = Math.sqrt(variance);
+  return std > 0 && lastVal > mean + 3 * std && lastVal > mean * 1.5;
+}
+
+function fmtRate(value, unit) {
+  const abs = Math.abs(value);
+  if (abs >= 1024) return `${num(abs / 1024, 1)} ${unit[1]}`;
+  return `${num(abs, 0)} ${unit[0]}`;
+}
+
+function fmtMem(mib) {
+  if (!Number.isFinite(mib)) return "—";
+  if (Math.abs(mib) >= 1024) return `${num(mib / 1024, 1)} GiB`;
+  return `${num(mib, 0)} MiB`;
+}
+
+function fmtBytes(bytes) {
+  if (!Number.isFinite(bytes)) return null;
+  return fmtMem(bytes / 1024 / 1024);
+}
+
+function fmtKB(kb) {
+  if (!Number.isFinite(kb)) return null;
+  return fmtMem(kb / 1024);
+}
+
+function fmtUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (d || h) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
+}
+
+function fmtBootDate(bootTimeMs) {
+  const boot = new Date(bootTimeMs);
+  const date = boot.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
+  const time = boot.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `activo desde ${date} ${time}`;
+}
+
+function escAttr(s) {
+  return String(s).replace(/"/g, "&quot;");
+}
+
+async function fetchJSON(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
+}
+
+// ---------- historial de sparklines (propia API) ----------
+
+async function fetchHistory(metric, of) {
+  const qs = new URLSearchParams({ metric, points: HISTORY_POINTS });
+  if (of) qs.set("of", of);
+  try {
+    const json = await fetchJSON(`/api/history?${qs}`);
+    const values = (json.points || []).map((p) => p.value);
+    const times = (json.points || []).map((p) => p.time);
+    return { values, times };
+  } catch {
+    return { values: [], times: [] };
+  }
+}
+
+// suma elemento a elemento dos series de igual largo (para "iops totales",
+// "errores+drops", etc. calculadas a partir de dos historiales)
+function sumSeries(a, b) {
+  const n = Math.max(a.length, b.length);
+  const out = [];
+  for (let i = 0; i < n; i++) out.push((a[i] || 0) + (b[i] || 0));
+  return out;
+}
+
+// ---------- historial de sesiones de uptime (reinicios del host) ----------
+
+function renderUptimeHistory(sessions) {
+  const el = document.getElementById("uptime-history");
+  if (!sessions || !sessions.length) {
+    el.innerHTML = '<span class="empty-note" style="padding:0">sin historial de reinicios todavía</span>';
+    return;
+  }
+  const shown = sessions.slice(0, 8);
+  const maxDur = Math.max(...shown.map((s) => s.duration_seconds), 1);
+  el.innerHTML = shown.map((s) => {
+    const pct = clamp((s.duration_seconds / maxDur) * 100);
+    const label = s.ongoing ? "actual" : new Date(s.start).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+    const barColor = s.ongoing ? "var(--a-cpu)" : s.duration_seconds < 600 ? "var(--crit)" : s.duration_seconds < 7200 ? "var(--warn)" : "var(--ok)";
+    const tip = s.ongoing ? "sesión en curso" : `terminó el ${new Date(s.end).toLocaleString()}`;
+    return `
+      <div class="uphist-row${s.ongoing ? " ongoing" : ""}" data-tip="${escAttr(tip)}">
+        <span class="uh-label">${label}</span>
+        <span class="uh-bar-wrap"><span class="uh-bar" style="width:${pct}%;background:${barColor}"></span></span>
+        <span class="uh-dur">${fmtUptime(s.duration_seconds)}</span>
+      </div>`;
+  }).join("");
+}
+
+// ---------- gráfico interactivo (sparkline con área + tooltip al pasar el mouse) ----------
+
+let sparkIdSeq = 0;
+
+function createSparkChart(mountEl) {
+  const gid = `spg-${sparkIdSeq++}`;
+  mountEl.innerHTML = `
+    <div class="spark-wrap">
+      <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+            <stop class="sp-stop-a" offset="0" stop-opacity=".32"/>
+            <stop class="sp-stop-b" offset="1" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon class="sp-area" fill="url(#${gid})" points=""/>
+        <polyline class="sp-line" fill="none" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" points=""/>
+        <line class="sp-guide" x1="0" y1="0" x2="0" y2="30"/>
+        <circle class="sp-dot" r="2.2"/>
+      </svg>
+      <div class="sp-tip"></div>
+    </div>`;
+  const wrap = mountEl.querySelector(".spark-wrap");
+  const svg = mountEl.querySelector("svg");
+  const area = mountEl.querySelector(".sp-area");
+  const line = mountEl.querySelector(".sp-line");
+  const guide = mountEl.querySelector(".sp-guide");
+  const dot = mountEl.querySelector(".sp-dot");
+  const tip = mountEl.querySelector(".sp-tip");
+  const stopA = mountEl.querySelector(".sp-stop-a");
+  const stopB = mountEl.querySelector(".sp-stop-b");
+  let state = { values: [], times: [], fmt: (v) => num(v, 1) };
+
+  function xyOf(i, values, min, span) {
+    const x = values.length > 1 ? (i / (values.length - 1)) * 100 : 50;
+    const y = 28 - ((values[i] - min) / span) * 26;
+    return [x, y];
+  }
+
+  function render(values, times, stroke, fmt) {
+    const clean = (values || []).map((v) => (Number.isFinite(v) ? v : 0));
+    state = { values: clean, times: times || [], fmt: fmt || ((v) => num(v, 1)) };
+    if (state.values.length < 2) {
+      line.setAttribute("points", "");
+      area.setAttribute("points", "");
+      guide.style.display = "none";
+      dot.style.display = "none";
+      tip.style.display = "none";
+      return;
+    }
+    const min = Math.min(...state.values), max = Math.max(...state.values), span = max - min || 1;
+    const pts = state.values.map((v, i) => xyOf(i, state.values, min, span).join(",")).join(" ");
+    line.setAttribute("points", pts);
+    line.setAttribute("stroke", stroke);
+    area.setAttribute("points", `0,30 ${pts} 100,30`);
+    dot.setAttribute("fill", stroke);
+    stopA.setAttribute("stop-color", stroke);
+    stopB.setAttribute("stop-color", stroke);
+  }
+
+  function onMove(evt) {
+    const { values, times, fmt } = state;
+    if (values.length < 2) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    const frac = clamp01((evt.clientX - rect.left) / rect.width);
+    const idx = Math.round(frac * (values.length - 1));
+    const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+    const [x, y] = xyOf(idx, values, min, span);
+
+    guide.setAttribute("x1", x); guide.setAttribute("x2", x); guide.style.display = "block";
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.style.display = "block";
+
+    const timeLabel = times[idx] ? new Date(times[idx] * 1000).toLocaleTimeString() : "";
+    tip.innerHTML = `<strong>${fmt(values[idx])}</strong>${timeLabel ? `<span>${timeLabel}</span>` : ""}`;
+    tip.style.display = "block";
+    const wrapWidth = wrap.getBoundingClientRect().width || 1;
+    tip.style.left = `${Math.max(4, Math.min(wrapWidth - 4, (x / 100) * wrapWidth))}px`;
+  }
+
+  function onLeave() {
+    guide.style.display = "none";
+    dot.style.display = "none";
+    tip.style.display = "none";
+  }
+
+  svg.addEventListener("mousemove", onMove);
+  svg.addEventListener("mouseleave", onLeave);
+
+  return { render };
+}
+
+// ---------- métricas, agrupadas por sección ----------
+//
+// Cada entrada define cómo leer su valor actual desde el snapshot de
+// /api/stats (y, opcionalmente, el host de /api/host), y de qué metric key
+// de /api/history sacar el sparkline.
+
+let systemCores = null; // de /api/host, para normalizar el load average
+
+function diskOf(stats, mount = "/") {
+  return (stats.disks || []).find((d) => d.mount === mount) || null;
+}
+function primaryTemp(stats) {
+  const temps = stats.temp || [];
+  return temps.find((t) => t.is_primary_cpu) || temps[0] || null;
+}
+function sumNet(stats, field) {
+  return (stats.net || []).reduce((a, n) => a + (n[field] || 0), 0);
+}
+function sumDiskIO(stats, field) {
+  return (stats.disk_io || []).reduce((a, d) => a + (d[field] || 0), 0);
+}
+function maxDiskIO(stats, field) {
+  return (stats.disk_io || []).reduce((a, d) => Math.max(a, d[field] || 0), 0);
+}
+
+const METRICS = [
+  { section: "sys", key: "uptime", label: "Uptime",
+    compute: (stats, host) => {
+      if (!host?.boot_time) return { value: "—", sub: "" };
+      const seconds = (Date.now() - new Date(host.boot_time).getTime()) / 1000;
+      return { value: fmtUptime(seconds), sub: fmtBootDate(new Date(host.boot_time).getTime()) };
+    } },
+  { section: "sys", key: "alarms", label: "Alarmas activas",
+    compute: (stats, host, alarms) => {
+      const count = (alarms || []).length;
+      return { value: String(count), sub: count ? "requiere atención" : "sin alertas", pct: count ? 100 : 0 };
+    } },
+
+  { section: "cpu", key: "cpu-use", label: "Uso", fmt: (v) => `${num(v, 1)} %`, history: "cpu.usage_pct",
+    compute: (stats) => ({
+      value: `${num(stats.cpu?.usage_pct, 1)}<small> %</small>`,
+      sub: `iowait ${num(stats.cpu?.iowait_pct, 1)}% · sys ${num(stats.cpu?.system_pct, 1)}%`,
+      pct: stats.cpu?.usage_pct,
+    }) },
+  { section: "cpu", key: "cpu-user", label: "Usuario", fmt: (v) => `${num(v, 1)} %`, history: "cpu.user_pct",
+    compute: (stats) => ({ value: `${num(stats.cpu?.user_pct, 1)}<small> %</small>`, sub: "procesos en espacio de usuario", pct: stats.cpu?.user_pct }) },
+  { section: "cpu", key: "cpu-system", label: "Sistema", fmt: (v) => `${num(v, 1)} %`, history: "cpu.system_pct",
+    compute: (stats) => ({ value: `${num(stats.cpu?.system_pct, 1)}<small> %</small>`, sub: "llamadas al kernel", pct: stats.cpu?.system_pct }) },
+  { section: "cpu", key: "cpu-iowait", label: "iowait", fmt: (v) => `${num(v, 1)} %`, colorFn: (v) => colorCustom(v, 10, 20), history: "cpu.iowait_pct",
+    compute: (stats) => {
+      const pct = stats.cpu?.iowait_pct ?? 0;
+      return {
+        value: `${num(pct, 1)}<small> %</small>`,
+        sub: pct >= 20 ? "🔥 cuello de botella de disco" : pct >= 10 ? "esperando I/O, vigilar" : "sin espera relevante de disco",
+        pct,
+      };
+    } },
+  { section: "cpu", key: "cpu-steal", label: "Steal", fmt: (v) => `${num(v, 1)} %`, colorFn: (v) => colorCustom(v, 5, 15), history: "cpu.steal_pct",
+    compute: (stats) => {
+      const pct = stats.cpu?.steal_pct ?? 0;
+      return { value: `${num(pct, 1)}<small> %</small>`, sub: pct > 0 ? "CPU robada por el hypervisor (VPS)" : "sin contención de hypervisor", pct };
+    } },
+  { section: "cpu", key: "cpu-load", label: "Promedio (load)", fmt: (v) => num(v, 2), history: "load.load1",
+    compute: (stats) => {
+      const l = stats.load || {};
+      return {
+        value: num(l.load1, 2),
+        sub: systemCores
+          ? `${num(l.normalized_pct, 0)}% de ${systemCores} núcleos · 5m ${num(l.load5, 2)} · 15m ${num(l.load15, 2)}`
+          : `5m ${num(l.load5, 2)} · 15m ${num(l.load15, 2)}`,
+        pct: systemCores ? clamp(l.normalized_pct) : null,
+      };
+    } },
+  { section: "cpu", key: "cpu-temp", label: "Temperatura", fmt: (v) => `${num(v, 1)} °C`, history: "temp.celsius",
+    compute: (stats) => {
+      const t = primaryTemp(stats);
+      if (!t) return { value: "N/D", sub: "sin sensor disponible" };
+      const pct = clamp(((t.celsius - 30) / (90 - 30)) * 100);
+      return { value: `${num(t.celsius, 1)}<small> °C</small>`, sub: t.celsius >= 85 ? "alta" : t.celsius >= 70 ? "elevada" : "normal", pct };
+    } },
+
+  { section: "ram", key: "ram-used", label: "En uso", fmt: (v) => `${num(v, 1)} %`, history: "ram.used_pct",
+    compute: (stats) => ({ value: `${num(stats.ram?.used_pct, 1)}<small> %</small>`, sub: fmtKB(stats.ram?.used_kb) || "—", pct: stats.ram?.used_pct }) },
+  { section: "ram", key: "ram-avail", label: "Disponible", fmt: (v) => `${num(v, 1)} %`, history: "ram.available_pct",
+    compute: (stats) => ({ value: fmtKB(stats.ram?.available_kb) || "—", sub: "libre + caché + buffers", pct: stats.ram?.available_pct }) },
+  { section: "ram", key: "ram-free", label: "Free", fmt: (v) => `${num(v, 1)} %`, history: "ram.free_pct",
+    compute: (stats) => ({ value: fmtKB(stats.ram?.free_kb) || "—", sub: "sin caché ni buffers", pct: stats.ram?.free_pct }) },
+  { section: "ram", key: "ram-swap", label: "Swap", fmt: (v) => `${num(v, 1)} %`, history: "swap.used_pct",
+    compute: (stats) => {
+      if (!stats.swap?.present) return { value: "N/D", sub: "sin swap configurado" };
+      return { value: `${num(stats.swap.used_pct, 1)}<small> %</small>`, sub: fmtKB(stats.swap.used_kb) || "—", pct: stats.swap.used_pct };
+    } },
+  { section: "ram", key: "ram-cache", label: "Caché", fmt: (v) => `${num(v, 1)} %`, colorFn: () => "var(--a-ram)", history: "ram.cache_pct",
+    compute: (stats) => ({ value: fmtKB(stats.ram?.cached_kb) || "—", sub: "reclamable, no es uso real", pct: stats.ram?.cache_pct }) },
+
+  { section: "disk", key: "disk-used", label: "En uso", fmt: (v) => `${num(v, 1)} %`, history: "disk.used_pct",
+    compute: (stats) => {
+      const d = diskOf(stats);
+      if (!d) return { value: "—", sub: "sin datos de /" };
+      return { value: `${num(d.used_pct, 1)}<small> %</small>`, sub: `${num(d.used_bytes / 1024 / 1024 / 1024, 1)} GiB`, pct: d.used_pct };
+    } },
+  { section: "disk", key: "disk-avail", label: "Disponible", history: "disk.avail_bytes",
+    fmt: (v) => `${num(v / 1024 / 1024 / 1024, 1)} GiB`,
+    compute: (stats) => {
+      const d = diskOf(stats);
+      if (!d) return { value: "—", sub: "sin datos de /" };
+      return { value: `${num(d.avail_bytes / 1024 / 1024 / 1024, 1)} GiB`, sub: "espacio libre en /", pct: clamp(100 - d.used_pct) };
+    } },
+  { section: "disk", key: "disk-read", label: "Lectura", fmt: (v) => fmtRate(v / 1024, ["KiB/s", "MiB/s"]), history: "disk_io.read_bps",
+    compute: (stats) => ({ value: fmtRate(sumDiskIO(stats, "read_bps") / 1024, ["KiB/s", "MiB/s"]), sub: "disco, global" }) },
+  { section: "disk", key: "disk-write", label: "Escritura", fmt: (v) => fmtRate(v / 1024, ["KiB/s", "MiB/s"]), history: "disk_io.write_bps",
+    compute: (stats) => ({ value: fmtRate(sumDiskIO(stats, "write_bps") / 1024, ["KiB/s", "MiB/s"]), sub: "disco, global" }) },
+  { section: "disk", key: "disk-iops", label: "IOPS", fmt: (v) => `${num(v, 0)} ops/s`, history: "disk_io.read_iops",
+    compute: (stats) => {
+      const iops = sumDiskIO(stats, "read_iops") + sumDiskIO(stats, "write_iops");
+      const devices = (stats.disk_io || []).length;
+      return { value: `${num(iops, 0)}<small> ops/s</small>`, sub: devices ? `${devices} disco${devices === 1 ? "" : "s"}` : "sin dispositivos" };
+    } },
+  { section: "disk", key: "disk-latency", label: "Latencia I/O", fmt: (v) => `${num(v, 1)} ms`, colorFn: (v) => colorCustom(v, 20, 50), history: "disk_io.latency_ms",
+    compute: (stats) => {
+      if (!(stats.disk_io || []).length) return { value: "N/D", sub: "sin dispositivos de disco detectados" };
+      const val = maxDiskIO(stats, "latency_ms");
+      return { value: `${num(val, 1)}<small> ms</small>`, sub: val >= 50 ? "🔥 latencia alta, posible cuello de botella" : val >= 20 ? "elevada, vigilar" : "normal", pct: clamp(val) };
+    } },
+
+  { section: "net", key: "net-in", label: "Entrante", fmt: (v) => fmtRate(v / 1024, ["kb/s", "Mb/s"]), history: "net.rx_bps",
+    compute: (stats) => ({ value: fmtRate(sumNet(stats, "rx_bps") / 1024, ["kb/s", "Mb/s"]), sub: "↓ descarga" }) },
+  { section: "net", key: "net-out", label: "Saliente", fmt: (v) => fmtRate(v / 1024, ["kb/s", "Mb/s"]), history: "net.tx_bps",
+    compute: (stats) => ({ value: fmtRate(sumNet(stats, "tx_bps") / 1024, ["kb/s", "Mb/s"]), sub: "↑ subida" }) },
+  { section: "net", key: "net-total", label: "Consumo total", fmt: (v) => fmtRate(v / 1024, ["kb/s", "Mb/s"]), history: "net.rx_bps",
+    extraHistory: "net.tx_bps",
+    compute: (stats) => {
+      const rx = sumNet(stats, "rx_bps"), tx = sumNet(stats, "tx_bps");
+      return { value: fmtRate((rx + tx) / 1024, ["kb/s", "Mb/s"]), sub: `↓ ${fmtRate(rx / 1024, ["kb/s", "Mb/s"])} · ↑ ${fmtRate(tx / 1024, ["kb/s", "Mb/s"])}` };
+    } },
+  { section: "net", key: "net-packets", label: "Paquetes", fmt: (v) => `${num(v, 0)} pps`, history: "net.packets_ps",
+    compute: (stats) => {
+      const ifaces = (stats.net || []).length;
+      return { value: `${num(sumNet(stats, "packets_ps"), 0)}<small> pps</small>`, sub: ifaces ? `${ifaces} interfaz${ifaces === 1 ? "" : "es"}` : "sin interfaces" };
+    } },
+  { section: "net", key: "net-errors", label: "Errores / drops", fmt: (v) => `${num(v, 2)} /s`, colorFn: (v) => colorCustom(v, 1, 5), history: "net.errors_ps",
+    extraHistory: "net.drops_ps",
+    compute: (stats) => {
+      const val = sumNet(stats, "errors_ps") + sumNet(stats, "drops_ps");
+      return { value: `${num(val, 2)}<small> /s</small>`, sub: val > 0 ? "hay errores o paquetes descartados" : "sin errores ni drops", pct: clamp(val) };
+    } },
+];
+
+// ---------- render: tarjetas estáticas ----------
+
+const SECTION_GRID = {
+  sys: document.getElementById("grid-sys"),
+  cpu: document.getElementById("grid-cpu"),
+  ram: document.getElementById("grid-ram"),
+  disk: document.getElementById("grid-disk"),
+  net: document.getElementById("grid-net"),
+};
+
+const cards = {};
+for (const metric of METRICS) {
+  const card = document.createElement("div");
+  card.className = metric.key === "uptime" ? "card card-wide" : "card";
+  card.innerHTML = `
+    <div class="label">${metric.label}</div>
+    <div class="value" data-value>—</div>
+    <div class="sub" data-sub></div>
+    <div class="bar" data-bar hidden><span></span></div>
+    <div data-spark></div>`;
+  SECTION_GRID[metric.section].appendChild(card);
+  const spark = createSparkChart(card.querySelector("[data-spark]"));
+  cards[metric.key] = { el: card, spark };
+}
+
+function paintCard(entry, metric, { value, sub = "", pct = null, spark = null, times = null }) {
+  const colorOf = metric.colorFn || color;
+  const card = entry.el;
+  const valueEl = card.querySelector("[data-value]");
+  valueEl.innerHTML = value;
+  valueEl.style.color = pct === null || pct === undefined ? "" : colorOf(pct);
+  card.querySelector("[data-sub]").textContent = sub;
+
+  const bar = card.querySelector("[data-bar]");
+  bar.hidden = pct === null || pct === undefined;
+  if (pct !== null && pct !== undefined) {
+    bar.firstElementChild.style.width = `${clamp(pct)}%`;
+    bar.firstElementChild.style.background = colorOf(pct);
+  }
+
+  const stroke = pct === null || pct === undefined ? "var(--ok)" : colorOf(pct);
+  entry.spark.render(spark, times, stroke, metric.fmt);
+}
+
+// ---------- render: sockets y puertos publicados (resumen del host) ----------
+
+const socketsList = document.getElementById("sockets-list");
+const publishedPortsList = document.getElementById("published-ports-list");
+
+function renderInfoList(el, rows, emptyMsg) {
+  if (!rows.length) {
+    el.innerHTML = `<span class="empty-note" style="padding:0">${emptyMsg}</span>`;
+    return;
+  }
+  el.innerHTML = rows.map((r) => `<div class="row"><span>${r.label}</span><span>${r.value}</span></div>`).join("");
+}
+
+function renderSockets(stats) {
+  const s = stats.sockets || {};
+  const rows = [
+    { label: "TCP en uso", value: s.tcp_in_use },
+    { label: "TCP orphan", value: s.tcp_orphan },
+    { label: "TCP time-wait", value: s.tcp_time_wait },
+    { label: "UDP en uso", value: s.udp_in_use },
+    { label: "Total sockets", value: s.total_used },
+  ].filter((r) => Number.isFinite(r.value));
+  renderInfoList(socketsList, rows.map((r) => ({ label: r.label, value: String(r.value) })), "sin datos de sockets");
+}
+
+// ---------- info del sistema (hostname / SO / kernel / núcleos) ----------
+
+const sysInfoList = document.getElementById("sysinfo-list");
+let cachedHost = null;
+
+const disksList = document.getElementById("disks-list");
+const usbList = document.getElementById("usb-list");
+
+async function tickSysInfo() {
+  try {
+    const info = await fetchJSON("/api/host");
+    cachedHost = info;
+    systemCores = info.cores_total || null;
+    const rows = [
+      { label: "Hostname", value: info.hostname || "—" },
+      { label: "Sistema", value: [info.os_name, info.os_version].filter(Boolean).join(" ") || "—" },
+      { label: "Kernel", value: info.kernel_version || "—" },
+      { label: "Arquitectura", value: info.architecture || "—" },
+      { label: "Procesador", value: [info.cpu_vendor, info.cpu_model].filter(Boolean).join(" ") || "—" },
+      { label: "Núcleos", value: info.cores_total != null ? String(info.cores_total) : "—" },
+      { label: "Frecuencia CPU", value: info.cpu_mhz ? `${num(info.cpu_mhz / 1000, 2)} GHz${info.cpu_mhz_is_max ? " (máx.)" : ""}` : "—" },
+      { label: "RAM total", value: fmtKB(info.ram_total_kb) || "—" },
+      { label: "Frecuencia RAM", value: info.ram_frequency_mhz ? `${num(info.ram_frequency_mhz, 0)} MHz` : "N/D" },
+      { label: "Virtualización", value: info.virtualization && info.virtualization !== "none" ? info.virtualization : "—" },
+    ];
+    renderInfoList(sysInfoList, rows, "no disponible");
+    renderDisks(info.disks || []);
+    renderUSB(info.usb_devices || []);
+  } catch {
+    renderInfoList(sysInfoList, [], "no disponible");
+    renderDisks([]);
+    renderUSB([]);
+  }
+}
+
+function renderDisks(disks) {
+  renderInfoList(
+    disksList,
+    disks.map((d) => ({ label: `${d.device}${d.model ? " · " + d.model : ""}`, value: fmtBytes(d.size_bytes) || "—" })),
+    "sin discos físicos detectados"
+  );
+}
+
+function renderUSB(devices) {
+  renderInfoList(
+    usbList,
+    devices.map((d) => ({
+      label: d.product || `${d.vendor_id}:${d.product_id}`,
+      value: d.manufacturer || `${d.vendor_id}:${d.product_id}`,
+    })),
+    "sin dispositivos USB detectados"
+  );
+}
+
+// ---------- top procesos por CPU ----------
+
+const appsCpuList = document.getElementById("apps-cpu-list");
+
+function renderAppsTop(stats) {
+  const rows = (stats.processes || []).map((p) => ({ label: `${p.name} (${p.pid})`, value: `${num(p.cpu_pct, 1)} %` }));
+  renderInfoList(appsCpuList, rows, "sin datos de procesos");
+}
+
+// ---------- seguridad: intentos de SSH y conexiones vigiladas ----------
+
+const sshList = document.getElementById("ssh-list");
+const connList = document.getElementById("conn-list");
+
+const SSH_ACTION_LABEL = {
+  accepted: "✔ acceso aceptado",
+  failed: "✖ password incorrecta",
+  invalid_user: "✖ usuario inválido",
+  closed: "◦ conexión cerrada",
+};
+
+function fmtEventTime(iso) {
+  return new Date(iso).toLocaleString(undefined, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+async function tickSSH() {
+  try {
+    const json = await fetchJSON("/api/security/ssh");
+    if (!json.enabled) {
+      renderInfoList(sshList, [], "deshabilitado (activá ssh_watch_enabled en config.json)");
+      return;
+    }
+    const rows = json.events.map((e) => ({
+      label: `${fmtEventTime(e.time)} · ${e.ip}${e.user ? " · " + e.user : ""}`,
+      value: SSH_ACTION_LABEL[e.action] || e.action,
+    }));
+    renderInfoList(sshList, rows, "sin intentos registrados todavía");
+  } catch {
+    renderInfoList(sshList, [], "no disponible");
+  }
+}
+
+async function tickConnections() {
+  try {
+    const json = await fetchJSON("/api/security/connections");
+    if (!json.enabled) {
+      renderInfoList(connList, [], "deshabilitado (activá conn_watch_enabled y conn_watch_ports en config.json)");
+      return;
+    }
+    const rows = json.events.map((e) => ({
+      label: `${fmtEventTime(e.time)} · puerto ${e.local_port}`,
+      value: e.ip,
+    }));
+    renderInfoList(connList, rows, "sin conexiones registradas todavía");
+  } catch {
+    renderInfoList(connList, [], "no disponible");
+  }
+}
+
+// ---------- render: contenedores Docker ----------
+
+const dockerGrid = document.getElementById("grid-docker");
+const dockerCount = document.getElementById("docker-count");
+
+let containerNodes = {};
+let lastContainerKey = "";
+
+function buildContainerCard(name) {
+  const el = document.createElement("div");
+  el.className = "ccard";
+  el.innerHTML = `
+    <div class="cc-head">
+      <span class="cc-dot" data-dot></span>
+      <div class="cname" data-name>${name}</div>
+      <span class="cc-restart" data-restart hidden data-tip=""></span>
+    </div>
+    <div class="cc-meta">
+      <span class="image-pill" data-image></span>
+      <span class="cc-health" data-health hidden data-tip="Resultado del healthcheck definido en el contenedor"></span>
+    </div>
+    <div class="cc-status" data-status></div>
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <div class="st-label">CPU</div>
+        <div class="st-value" data-cpu>—</div>
+        <div class="st-bar"><span data-cpu-bar></span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="st-label">Memoria</div>
+        <div class="st-value" data-mem>—</div>
+        <div class="st-bar"><span data-mem-bar></span></div>
+      </div>
+    </div>
+    <div class="stat-line"><span class="sl-label">E/S</span><span data-io>—</span></div>
+    <div class="stat-line"><span class="sl-label">Red</span><span data-net>—</span></div>
+    <div class="stat-line"><span class="sl-label">Disco</span><span data-size>—</span></div>
+    <div class="cc-ports" data-ports></div>`;
+  return {
+    el,
+    dot: el.querySelector("[data-dot]"),
+    image: el.querySelector("[data-image]"),
+    status: el.querySelector("[data-status]"),
+    restart: el.querySelector("[data-restart]"),
+    health: el.querySelector("[data-health]"),
+    cpu: el.querySelector("[data-cpu]"),
+    cpuBar: el.querySelector("[data-cpu-bar]"),
+    mem: el.querySelector("[data-mem]"),
+    memBar: el.querySelector("[data-mem-bar]"),
+    size: el.querySelector("[data-size]"),
+    io: el.querySelector("[data-io]"),
+    net: el.querySelector("[data-net]"),
+    ports: el.querySelector("[data-ports]"),
+  };
+}
+
+function rebuildContainerDom(containers) {
+  dockerGrid.innerHTML = "";
+  containerNodes = {};
+  if (!containers.length) {
+    dockerGrid.innerHTML = '<div class="empty-note">No se detectaron contenedores en este host.</div>';
+    return;
+  }
+  for (const c of containers) {
+    const node = buildContainerCard(c.name);
+    dockerGrid.appendChild(node.el);
+    containerNodes[c.name] = node;
+  }
+}
+
+function stateColor(state) {
+  switch ((state || "").toLowerCase()) {
+    case "running": return "var(--ok)";
+    case "exited": case "dead": return "var(--crit)";
+    case "restarting": case "paused": return "var(--warn)";
+    default: return "var(--muted)";
+  }
+}
+
+function portChipHtml(c) {
+  return `<span class="port-chip${c.published ? "" : " unpublished"}">${c.label}</span>`;
+}
+
+function paintContainerCard(node, c) {
+  const isRunning = c.state === "running";
+
+  node.dot.style.background = stateColor(c.state);
+  node.dot.classList.toggle("running", isRunning);
+  node.image.textContent = c.image || "";
+  node.status.textContent = c.status || "";
+
+  if (c.restart_count) {
+    node.restart.hidden = false;
+    node.restart.textContent = `↻ ${c.restart_count}`;
+    node.restart.classList.toggle("crit", c.restart_count >= 5);
+    node.restart.setAttribute("data-tip", `Se reinició ${c.restart_count} veces desde que se creó`);
+  } else {
+    node.restart.hidden = true;
+  }
+
+  if (c.health && c.health !== "none") {
+    node.health.hidden = false;
+    node.health.textContent = c.health;
+    node.health.className = `cc-health ${c.health}`;
+  } else {
+    node.health.hidden = true;
+  }
+
+  const dash = isRunning ? "N/D" : "detenido";
+
+  if (isRunning && Number.isFinite(c.cpu_pct)) {
+    node.cpu.textContent = `${num(c.cpu_pct, 1)} %`;
+    node.cpuBar.style.width = `${clamp(c.cpu_pct)}%`;
+    node.cpuBar.style.background = color(c.cpu_pct);
+  } else {
+    node.cpu.textContent = dash;
+    node.cpuBar.style.width = "0%";
+  }
+
+  if (isRunning && c.mem_limit_bytes) {
+    node.mem.textContent = `${fmtBytes(c.mem_used_bytes)} · ${num(c.mem_pct, 0)}%`;
+    node.memBar.style.width = `${clamp(c.mem_pct)}%`;
+    node.memBar.style.background = color(c.mem_pct);
+  } else {
+    node.mem.textContent = dash;
+    node.memBar.style.width = "0%";
+  }
+
+  node.size.textContent = (c.size_rw_bytes || c.volume_usage_bytes)
+    ? [c.size_rw_bytes && `capa ${fmtBytes(c.size_rw_bytes)}`, c.volume_usage_bytes && `vol ${fmtBytes(c.volume_usage_bytes)}`].filter(Boolean).join(" · ")
+    : "N/D";
+
+  node.io.textContent = isRunning
+    ? `↓${fmtRate((c.block_read_bps || 0) / 1024, ["K", "M"])} ↑${fmtRate((c.block_write_bps || 0) / 1024, ["K", "M"])}`
+    : dash;
+
+  node.net.textContent = isRunning
+    ? `↓${fmtRate((c.net_rx_bps || 0) / 1024, ["kb", "Mb"])} ↑${fmtRate((c.net_tx_bps || 0) / 1024, ["kb", "Mb"])}`
+    : dash;
+
+  const chips = c.port_chips || [];
+  portsFullByContainer[c.name] = chips;
+  const MAX_VISIBLE_PORTS = 5;
+  const visible = chips.slice(0, MAX_VISIBLE_PORTS);
+  const hidden = chips.length - visible.length;
+  node.ports.innerHTML = chips.length
+    ? visible.map(portChipHtml).join("") +
+      (hidden > 0 ? `<button type="button" class="port-chip more" data-ports-more data-container="${escAttr(c.name)}">+${hidden} más</button>` : "")
+    : '<span class="port-chip unpublished">sin puertos</span>';
+}
+
+function renderPublishedPorts(containers) {
+  const rows = [];
+  for (const c of containers) {
+    for (const chip of (c.port_chips || []).filter((ch) => ch.published)) {
+      rows.push({ sortKey: parseInt(chip.label, 10) || 0, label: chip.label, name: c.name });
+    }
+  }
+  rows.sort((a, b) => a.sortKey - b.sortKey);
+  renderInfoList(publishedPortsList, rows.map((r) => ({ label: r.label, value: `→ ${r.name}` })), "ningún contenedor publica puertos");
+}
+
+// ---------- modal: listado completo de puertos de un contenedor ----------
+
+const portsFullByContainer = {};
+const portsModal = document.getElementById("ports-modal");
+const portsModalTitle = document.getElementById("ports-modal-title");
+const portsModalSub = document.getElementById("ports-modal-sub");
+const portsModalBody = document.getElementById("ports-modal-body");
+
+function openPortsModal(name) {
+  const chips = portsFullByContainer[name] || [];
+  portsModalTitle.textContent = name;
+  portsModalSub.textContent = `${chips.length} puerto${chips.length === 1 ? "" : "s"}`;
+  portsModalBody.innerHTML = chips.length
+    ? chips.map(portChipHtml).join("")
+    : '<span class="empty-note" style="padding:0">sin puertos</span>';
+  portsModal.classList.add("open");
+}
+
+function closePortsModal() {
+  portsModal.classList.remove("open");
+}
+
+document.getElementById("ports-modal-close").addEventListener("click", closePortsModal);
+portsModal.addEventListener("click", (e) => { if (e.target === portsModal) closePortsModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePortsModal(); });
+document.getElementById("grid-docker").addEventListener("click", (e) => {
+  const trigger = e.target.closest("[data-ports-more]");
+  if (trigger) openPortsModal(trigger.dataset.container);
+});
+
+async function tickContainers() {
+  let containers = [];
+  try {
+    const json = await fetchJSON("/api/containers");
+    containers = (json.containers || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    dockerCount.textContent = "";
+    renderInfoList(publishedPortsList, [], "no disponible");
+    return [];
+  }
+
+  const key = containers.map((c) => c.name).join("|");
+  if (key !== lastContainerKey) {
+    rebuildContainerDom(containers);
+    lastContainerKey = key;
+  }
+  dockerCount.textContent = containers.length ? `${containers.length} contenedor${containers.length === 1 ? "" : "es"}` : "";
+  renderPublishedPorts(containers);
+
+  for (const c of containers) {
+    const node = containerNodes[c.name];
+    if (node) paintContainerCard(node, c);
+  }
+
+  return containers;
+}
+
+// ---------- banda de alertas ----------
+
+const alertBarEl = document.getElementById("alertBar");
+
+function renderAlerts(alarms) {
+  if (!alarms || !alarms.length) {
+    alertBarEl.hidden = true;
+    alertBarEl.innerHTML = "";
+    return;
+  }
+  alertBarEl.hidden = false;
+  alertBarEl.innerHTML = alarms.map((a) => {
+    const isPct = a.metric && a.metric.endsWith("_pct");
+    const detail = isPct && Number.isFinite(a.value) ? ` (${num(a.value, 0)}%)` : "";
+    return `<span class="alert-chip ${a.severity}">⚠ ${a.message}${detail}</span>`;
+  }).join("");
+}
+
+// ---------- tabs ----------
+
+const tabsNav = document.getElementById("tabs");
+const tabsFab = document.getElementById("tabsFab");
+
+function closeTabsMenu() {
+  tabsNav.classList.remove("open");
+  tabsFab.setAttribute("aria-expanded", "false");
+}
+
+tabsFab.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const open = tabsNav.classList.toggle("open");
+  tabsFab.setAttribute("aria-expanded", String(open));
+});
+
+document.addEventListener("click", (e) => {
+  if (!tabsNav.classList.contains("open")) return;
+  if (tabsNav.contains(e.target) || tabsFab.contains(e.target)) return;
+  closeTabsMenu();
+});
+
+document.querySelectorAll(".tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".tab-panel").forEach((p) => {
+      p.hidden = p.dataset.tab !== btn.dataset.tab;
+    });
+    closeTabsMenu();
+  });
+});
+
+// ---------- loop principal ----------
+
+const dotEl = document.getElementById("dot");
+const statusEl = document.getElementById("status");
+let tickCount = 0;
+
+async function tick() {
+  tickCount++;
+  if (tickCount === 1 || tickCount % REDISCOVER_EVERY === 0) {
+    await tickSysInfo();
+    try {
+      const json = await fetchJSON("/api/uptime/sessions");
+      renderUptimeHistory(json.sessions || []);
+    } catch {
+      renderUptimeHistory(null);
+    }
+  }
+
+  let stats, alarms;
+  try {
+    stats = await fetchJSON("/api/stats");
+  } catch {
+    dotEl.classList.add("down");
+    statusEl.textContent = "sin conexión con el backend";
+    return;
+  }
+  try {
+    const json = await fetchJSON("/api/alarms");
+    alarms = json.alarms || [];
+  } catch {
+    alarms = [];
+  }
+
+  let netSpike = false;
+  await Promise.allSettled(
+    METRICS.map(async (metric) => {
+      const data = metric.compute(stats, cachedHost, alarms);
+      if (metric.history) {
+        const h = await fetchHistory(metric.history, metric.historyOf);
+        let values = h.values;
+        if (metric.extraHistory) {
+          const h2 = await fetchHistory(metric.extraHistory, metric.historyOf);
+          values = sumSeries(h.values, h2.values);
+        }
+        data.spark = values;
+        data.times = h.times;
+        if (metric.key === "net-total" && detectSpike(values)) netSpike = true;
+      }
+      paintCard(cards[metric.key], metric, data);
+    })
+  );
+
+  renderSockets(stats);
+  renderAppsTop(stats);
+  await tickContainers();
+  await tickSSH();
+  await tickConnections();
+  const allAlarms = netSpike ? [...alarms, { severity: "warn", message: "pico anómalo de red", metric: "net.spike", value: 0 }] : alarms;
+  renderAlerts(allAlarms);
+
+  dotEl.classList.remove("down");
+  statusEl.textContent = `${cachedHost?.hostname || "servidor"} — ${new Date().toLocaleTimeString()}`;
+}
+
+tick();
+setInterval(tick, REFRESH_MS);
+</script>
+
+</body>
+</html>
