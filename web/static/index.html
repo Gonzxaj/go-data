@@ -2018,7 +2018,7 @@ function renderAlerts(alarms) {
   alertBarEl.innerHTML = alarms.map((a) => {
     const isPct = a.metric && a.metric.endsWith("_pct");
     const detail = isPct && Number.isFinite(a.value) ? ` (${num(a.value, 0)}%)` : "";
-    return `<span class="alert-chip ${a.severity}">⚠ ${a.message}${detail}</span>`;
+    return `<span class="alert-chip ${escAttr(a.severity)}">⚠ ${escapeHtml(a.message)}${detail}</span>`;
   }).join("");
 }
 
