@@ -1648,12 +1648,16 @@ function paintCard(entry, metric, { value, sub = "", pct = null, spark = null, t
 const socketsList = document.getElementById("sockets-list");
 const publishedPortsList = document.getElementById("published-ports-list");
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function renderInfoList(el, rows, emptyMsg) {
   if (!rows.length) {
-    el.innerHTML = `<span class="empty-note" style="padding:0">${emptyMsg}</span>`;
+    el.innerHTML = `<span class="empty-note" style="padding:0">${escapeHtml(emptyMsg)}</span>`;
     return;
   }
-  el.innerHTML = rows.map((r) => `<div class="row"><span>${r.label}</span><span>${r.value}</span></div>`).join("");
+  el.innerHTML = rows.map((r) => `<div class="row"><span>${escapeHtml(r.label)}</span><span>${escapeHtml(r.value)}</span></div>`).join("");
 }
 
 function renderSockets(stats) {
@@ -1795,7 +1799,7 @@ function buildContainerCard(name) {
   el.innerHTML = `
     <div class="cc-head">
       <span class="cc-dot" data-dot></span>
-      <div class="cname" data-name>${name}</div>
+      <div class="cname" data-name>${escapeHtml(name)}</div>
       <span class="cc-restart" data-restart hidden data-tip=""></span>
     </div>
     <div class="cc-meta">
