@@ -13,6 +13,7 @@
     :root{--bg:#071421;--fg:#d7e1e8;--card:#10283c;--panel:#0b1d2c;--primary:#5cbdb9;--muted:#8da3b4;--border:rgba(92,132,157,.34);--warning:#e2b951;--crit:#e2665c;--radius:8px;--shadow:0 20px 55px -42px rgba(0,5,16,.8);font-family:Arial,"Helvetica Neue",sans-serif;color-scheme:dark}
     *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);letter-spacing:0}button{font:inherit;letter-spacing:0}svg{display:block}.app{max-width:1440px;margin:auto;padding:20px 32px}.bar,.nav,.panel{border:1px solid var(--border);background:rgba(16,40,60,.72);box-shadow:var(--shadow);backdrop-filter:blur(8px)}.bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:var(--radius)}.brand,.right,.nav-btn,.title,.row{display:flex;align-items:center}.brand{gap:12px;min-width:0}.logo,.avatar,.title-icon{display:grid;place-items:center;background:rgba(92,189,185,.14);color:var(--primary);border:1px solid rgba(92,189,185,.22);border-radius:6px}.logo,.avatar{width:32px;height:32px;font-size:11px;font-weight:700}.brand-copy{min-width:0}.eyebrow{margin:0;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.16em}.brand-title{margin:2px 0 0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.accent{color:var(--primary)}.right{gap:10px}.status,.clock,.icon-button{border:1px solid var(--border);background:rgba(7,20,33,.62);border-radius:6px}.status{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12px}.dot{width:7px;height:7px;border-radius:50%;background:var(--primary);animation:pulse 2.4s infinite}.clock{padding:7px 9px;color:var(--muted);font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.icon-button{width:32px;height:32px;display:grid;place-items:center;color:var(--muted);cursor:pointer;position:relative}.icon-button:hover,.nav-btn:hover{color:var(--primary);border-color:rgba(92,189,185,.3)}.badge-dot{position:absolute;width:8px;height:8px;border-radius:50%;right:-2px;top:-2px;background:var(--primary);box-shadow:0 0 0 2px var(--bg)}.nav{margin-top:12px;padding:4px;border-radius:var(--radius);display:flex;gap:4px;overflow:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav-btn{gap:8px;border:1px solid transparent;background:transparent;color:var(--muted);padding:8px 12px;border-radius:6px;white-space:nowrap;cursor:pointer;font-size:13px}.nav-btn.active{color:var(--primary);border-color:rgba(92,189,185,.25);background:rgba(92,189,185,.1)}.icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.main{margin-top:12px}.view{display:none}.view.active{display:block}.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.panel{border-radius:var(--radius);padding:16px;min-width:0}.span2{grid-column:span 2}.span4{grid-column:span 4}.span6{grid-column:span 6}.uptime{grid-row:span 2;position:relative;overflow:hidden}.uptime:before{content:"";position:absolute;left:20%;right:20%;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--primary),transparent)}.between{display:flex;align-items:center;justify-content:space-between;gap:12px}.tag{display:inline-block;border:1px solid rgba(92,189,185,.18);background:rgba(92,189,185,.09);color:var(--primary);border-radius:4px;padding:3px 6px;font:10px ui-monospace,SFMono-Regular,Consolas,monospace;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.big{margin:18px 0 8px;font-size:38px;line-height:1;font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.note{margin:5px 0 0;color:var(--muted);font-size:11px}.spark{width:100%;height:64px;margin-top:16px;color:var(--primary)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--border);padding-top:12px}.stat-value{margin:0;font:14px ui-monospace,SFMono-Regular,Consolas,monospace}.stat-label{margin:3px 0 0;color:var(--muted);font-size:10px}.title{gap:8px}.title-icon{width:28px;height:28px}.title h2{font-size:14px;margin:0}.barline{height:6px;background:var(--bg);border-radius:99px;overflow:hidden;margin-top:16px}.fill{height:100%;border-radius:99px;background:var(--primary)}.fill.warning{background:var(--warning)}.resource-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:12px;gap:10px}.alert-list{display:grid;gap:8px;margin-top:12px}.alert{display:flex;align-items:center;gap:12px;border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:9px 12px;font-size:12px}.alert .label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.time{color:var(--muted);font:10px ui-monospace,SFMono-Regular,Consolas,monospace}.info-list{display:grid;gap:14px;margin:16px 0 0;padding:0;list-style:none}.info-list li{display:flex;justify-content:space-between;gap:12px;font-size:12px}.info-list span:first-child{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info-list span:last-child{flex:none;text-align:right}table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;margin-top:12px;text-align:left}th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;padding:8px 0;border-bottom:1px solid var(--border)}td{padding:9px 0;border-bottom:1px solid var(--border);vertical-align:middle}td:last-child,th:last-child{text-align:right}.table-wrap{overflow:auto}.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px}.metric,.container-card,.security-card,.connections{border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:14px;min-width:0}.metric-value{margin:12px 0 0;color:var(--primary);font:500 20px ui-monospace,SFMono-Regular,Consolas,monospace}.metric .note{min-height:32px}.activity{margin-top:24px}.chart{height:176px;border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:16px;margin-top:12px}.chart svg{width:100%;height:100%;color:var(--primary)}.containers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}.container-card h3{font-size:14px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.container-head{display:flex;align-items:center;gap:9px}.container-head .cc-restart{margin-left:auto}.miniboxes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.minibox{border:1px solid var(--border);background:rgba(16,40,60,.55);border-radius:4px;padding:9px}.minibox p:last-child{margin:5px 0 0;font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}.security-grid{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-top:20px}.security-card{border-color:rgba(92,189,185,.22);background:rgba(92,189,185,.07)}.security-card .icon{width:20px;height:20px;color:var(--primary)}.security-card h3{font-size:18px;margin:14px 0 0}.connections + .connections{margin-top:12px}.connection{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--border);font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.connection:last-child{border-bottom:0}.connection span:first-child{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.connection span:last-child{flex:none;margin-left:12px}
     .spark-wrap{position:relative;width:100%;height:100%}.spark{cursor:crosshair}.spark-grid{stroke:var(--border);stroke-width:1;vector-effect:non-scaling-stroke}.spark-guide{stroke:rgba(215,225,232,.28);stroke-width:1;stroke-dasharray:2 2;vector-effect:non-scaling-stroke;display:none}.spark-dot{display:none;vector-effect:non-scaling-stroke}.spark-tip{position:absolute;top:2px;transform:translateX(-50%);background:rgba(4,10,18,.96);border:1px solid var(--border);padding:5px 9px;border-radius:6px;font:10.5px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;pointer-events:none;display:none;z-index:5}.spark-tip strong{color:var(--fg);font-weight:700}.spark-tip span{color:var(--muted);margin-left:6px}
+    .disk-group{display:grid;gap:12px}.disk-card{border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:12px}.disk-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px}.disk-head .device{color:var(--fg);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.disk-head .cap{color:var(--muted);flex:none}.disk-partitions{display:grid;gap:10px;margin-top:10px}.partition{border-top:1px solid var(--border);padding-top:10px}.partition:first-child{border-top:0;padding-top:0}.partition-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px}.partition-mount{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.partition-meta{color:var(--muted);font-size:11px;flex:none}.partition-usage{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:11px;margin-top:6px}.partition .barline{margin-top:6px}
     @keyframes pulse{50%{opacity:.35}}
     @media(max-width:900px){.app{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.span2,.span4{grid-column:span 1}.span6{grid-column:span 2}.metrics{grid-template-columns:repeat(2,1fr)}.containers{grid-template-columns:repeat(2,1fr)}.security-grid{grid-template-columns:1fr}.status{display:none}}
     @media(max-width:600px){.app{padding:12px}.clock{display:none}.grid{grid-template-columns:1fr}.span2,.span4,.span6{grid-column:span 1}.metrics,.containers{grid-template-columns:1fr}.bar{padding:11px 12px}.big{font-size:34px}}
@@ -75,7 +76,7 @@
       <article class="panel span6">
         <div class="title"><span class="title-icon"><svg class="icon"><use href="#i-disk"/></svg></span><h2>Almacenamiento y dispositivos</h2></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:4px">
-          <div><p class="eyebrow">Discos físicos</p><ul class="info-list" id="disks-list"></ul></div>
+          <div><p class="eyebrow">Discos físicos</p><div id="disks-list"></div></div>
           <div><p class="eyebrow">Dispositivos USB</p><ul class="info-list" id="usb-list"></ul></div>
         </div>
       </article>
@@ -538,18 +539,105 @@ async function tickSysInfo() {
       { label: "Virtualización", value: info.virtualization && info.virtualization !== "none" ? info.virtualization : "—" },
     ], "no disponible");
 
-    setRows(document.getElementById("disks-list"),
-      (info.disks || []).map((d) => ({ label: `${d.device}${d.model ? " · " + d.model : ""}`, value: fmtBytes(d.size_bytes) || "—" })),
-      "sin discos físicos detectados");
+    renderDisks(info.disks || []);
 
     setRows(document.getElementById("usb-list"),
       (info.usb_devices || []).map((d) => ({ label: d.product || `${d.vendor_id}:${d.product_id}`, value: d.manufacturer || `${d.vendor_id}:${d.product_id}` })),
       "sin dispositivos USB detectados");
   } catch {
     setRows(document.getElementById("hw-list"), [], "no disponible");
-    setRows(document.getElementById("disks-list"), [], "sin discos físicos detectados");
+    renderDisks([]);
     setRows(document.getElementById("usb-list"), [], "sin dispositivos USB detectados");
   }
+}
+
+// Renders physical disks as cards, each listing only its relevant (mounted,
+// data-bearing) partitions — EFI/boot/swap partitions were already filtered
+// out server-side. Built with DOM APIs like setRows, for the same reason:
+// device/model/mount strings are backend-reported but never interpolated
+// into markup.
+function renderDisks(disks) {
+  const root = document.getElementById("disks-list");
+  root.replaceChildren();
+  if (!disks.length) {
+    root.className = "";
+    const li = document.createElement("p");
+    li.className = "note";
+    li.style.margin = "16px 0 0";
+    li.textContent = "sin discos físicos detectados";
+    root.appendChild(li);
+    return;
+  }
+  root.className = "disk-group";
+  root.style.marginTop = "16px";
+  for (const disk of disks) {
+    root.appendChild(renderDiskCard(disk));
+  }
+}
+
+function renderDiskCard(disk) {
+  const card = document.createElement("div");
+  card.className = "disk-card";
+
+  const head = document.createElement("div");
+  head.className = "disk-head";
+  const device = document.createElement("span");
+  device.className = "device";
+  device.textContent = [disk.device, [disk.model, disk.kind].filter(Boolean).join(" · ")].filter(Boolean).join(" · ");
+  const cap = document.createElement("span");
+  cap.className = "cap mono";
+  cap.textContent = fmtBytes(disk.size_bytes) || "—";
+  head.append(device, cap);
+  card.appendChild(head);
+
+  const partitions = disk.partitions || [];
+  const list = document.createElement("div");
+  list.className = "disk-partitions";
+  if (!partitions.length) {
+    const note = document.createElement("p");
+    note.className = "note";
+    note.style.margin = "10px 0 0";
+    note.textContent = "sin particiones con datos detectadas";
+    list.appendChild(note);
+  } else {
+    for (const p of partitions) list.appendChild(renderPartitionRow(p));
+  }
+  card.appendChild(list);
+  return card;
+}
+
+function renderPartitionRow(p) {
+  const row = document.createElement("div");
+  row.className = "partition";
+
+  const head = document.createElement("div");
+  head.className = "partition-head";
+  const mount = document.createElement("span");
+  mount.className = "partition-mount mono";
+  mount.textContent = p.mount || p.device;
+  const meta = document.createElement("span");
+  meta.className = "partition-meta mono";
+  meta.textContent = [p.device, p.fs_type].filter(Boolean).join(" · ");
+  head.append(mount, meta);
+
+  const usage = document.createElement("div");
+  usage.className = "partition-usage mono";
+  const used = document.createElement("span");
+  used.textContent = `${fmtBytes(p.used_bytes) || "—"} / ${fmtBytes(p.total_bytes) || "—"} · ${num(p.used_pct, 1)}% usado`;
+  const avail = document.createElement("span");
+  avail.textContent = `${fmtBytes(p.avail_bytes) || "—"} disponibles`;
+  usage.append(used, avail);
+
+  const bar = document.createElement("div");
+  bar.className = "barline";
+  const fill = document.createElement("div");
+  fill.className = "fill";
+  fill.style.width = `${clamp(p.used_pct)}%`;
+  fill.style.background = color(p.used_pct);
+  bar.appendChild(fill);
+
+  row.append(head, usage, bar);
+  return row;
 }
 
 async function tickUptimeSessions() {

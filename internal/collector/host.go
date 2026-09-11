@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -197,18 +198,24 @@ func readRAMFrequencyMHz() float64 {
 }
 
 // readDiskInfo reads model + capacity for every real block device (same
-// device set diskio.go tracks), from sysfs — no privileges required.
+// device set diskio.go tracks), from sysfs — no privileges required — and
+// attaches the relevant mounted partitions found on each one.
 func readDiskInfo() []domain.DiskInfo {
 	entries, err := os.ReadDir("/sys/block")
 	if err != nil {
 		return nil
 	}
-	var out []domain.DiskInfo
+	var diskNames []string
 	for _, e := range entries {
-		name := e.Name()
-		if !realDiskRe.MatchString(name) {
-			continue
+		if realDiskRe.MatchString(e.Name()) {
+			diskNames = append(diskNames, e.Name())
 		}
+	}
+	parents := buildPartitionParents(diskNames)
+	byDisk := readDiskPartitions(parents)
+
+	var out []domain.DiskInfo
+	for _, name := range diskNames {
 		model := readSysfsTrimmed(filepath.Join("/sys/block", name, "device", "model"))
 		vendor := readSysfsTrimmed(filepath.Join("/sys/block", name, "device", "vendor"))
 		label := strings.TrimSpace(vendor + " " + model)
@@ -219,9 +226,194 @@ func readDiskInfo() []domain.DiskInfo {
 				sizeBytes = sectors * 512
 			}
 		}
-		out = append(out, domain.DiskInfo{Device: name, Model: label, SizeBytes: sizeBytes})
+		out = append(out, domain.DiskInfo{
+			Device:     name,
+			Model:      label,
+			SizeBytes:  sizeBytes,
+			Kind:       readDiskKind(name),
+			Partitions: byDisk[name],
+		})
 	}
 	return out
+}
+
+// readDiskKind reports "HDD" or "SSD" from sysfs's rotational flag, when the
+// driver exposes it — "" if unknown (e.g. some virtualized/passthrough disks).
+func readDiskKind(name string) string {
+	data, err := os.ReadFile(filepath.Join("/sys/block", name, "queue", "rotational"))
+	if err != nil {
+		return ""
+	}
+	switch strings.TrimSpace(string(data)) {
+	case "1":
+		return "HDD"
+	case "0":
+		return "SSD"
+	default:
+		return ""
+	}
+}
+
+// buildPartitionParents maps every real block-device name — each disk's
+// partitions, and the disk itself for the no-partition-table case — to the
+// physical disk it belongs to. It's read straight from sysfs's own
+// disk/partition hierarchy, the same parent/child relationship `lsblk`
+// reports: a device only counts as "sda's partition" here because the
+// kernel itself says so (a "partition" file exists under it in sysfs), never
+// because its name merely looks like one.
+func buildPartitionParents(diskNames []string) map[string]string {
+	parents := map[string]string{}
+	for _, disk := range diskNames {
+		parents[disk] = disk // covers a disk mounted directly, with no partition table
+		entries, err := os.ReadDir(filepath.Join("/sys/block", disk))
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			name := e.Name()
+			if _, err := os.Stat(filepath.Join("/sys/block", disk, name, "partition")); err != nil {
+				continue // not a kernel-recognized partition of this disk
+			}
+			parents[name] = disk
+		}
+	}
+	return parents
+}
+
+// partitionParentDisk maps a block-device name (as it appears under /dev,
+// without the leading path) to the physical disk it lives on, using the
+// disk/partition map buildPartitionParents derived from sysfs. A device not
+// found there directly is an LVM/dm-mapper volume or an md RAID device, so
+// it's resolved by following /sys/class/block/<name>/slaves one level down
+// to the underlying partition and looking that up instead. Returns "" if it
+// can't be attributed to exactly one physical disk.
+func partitionParentDisk(devName string, parents map[string]string) string {
+	if p, ok := parents[devName]; ok {
+		return p
+	}
+	slaves, err := os.ReadDir(filepath.Join("/sys/class/block", devName, "slaves"))
+	if err != nil || len(slaves) != 1 {
+		return "" // no slaves, or spans multiple disks (e.g. striped RAID) — can't attribute to one
+	}
+	return partitionParentDisk(slaves[0].Name(), parents)
+}
+
+// readDiskPartitions discovers mounted, data-bearing partitions and groups
+// them by the physical disk they live on (via partitionParentDisk). Every
+// mount is required to be a genuine whole-filesystem mount of a real
+// partition/disk block device — see discoverPartitionMounts — so bind
+// mounts of a subdirectory or single file (as Docker uses to expose
+// /etc/hostname, /etc/hosts, /etc/resolv.conf, /var/log, volumes, ... from
+// the host) are never mistaken for a partition, no matter what they're
+// mounted at or what device they share. Technical partitions (EFI/ESP, a
+// standalone /boot, ...) are then dropped by isTechnicalMount; swap and MSR
+// partitions carry no filesystem, so they were never mountable in the first
+// place and need no special-casing.
+func readDiskPartitions(parents map[string]string) map[string][]domain.PartitionInfo {
+	byDisk := map[string][]domain.PartitionInfo{}
+	for _, m := range discoverPartitionMounts() {
+		d, ok := statMount(m)
+		if !ok {
+			continue
+		}
+		if isTechnicalMount(d.Mount, d.FSType, d.TotalBytes) {
+			continue
+		}
+		devName := strings.TrimPrefix(m.device, "/dev/")
+		parent := partitionParentDisk(devName, parents)
+		if parent == "" {
+			continue // couldn't attribute to exactly one physical disk (e.g. a striped RAID volume) — skip rather than guess
+		}
+		byDisk[parent] = append(byDisk[parent], domain.PartitionInfo{
+			Device: devName, FSType: d.FSType, Mount: d.Mount,
+			TotalBytes: d.TotalBytes, UsedBytes: d.UsedBytes, AvailBytes: d.AvailBytes, UsedPct: d.UsedPct,
+		})
+	}
+	for name := range byDisk {
+		sort.Slice(byDisk[name], func(i, j int) bool { return byDisk[name][i].Mount < byDisk[name][j].Mount })
+	}
+	return byDisk
+}
+
+// discoverPartitionMounts reads /proc/self/mountinfo — richer than
+// /proc/mounts, since it also reports each mount's "root": the path *within
+// the source filesystem* that got mounted there. A genuine mount of an
+// entire partition always has root "/". Anything else — root being some
+// subpath — means it's a bind mount of just that subdirectory or file, which
+// is exactly how Docker exposes /etc/hostname, /etc/hosts, /etc/resolv.conf,
+// /var/log, and volumes from the host: same underlying device as the host's
+// real partition, but not the partition's own mount. Filtering on root "/"
+// is what actually tells partitions apart from those, rather than guessing
+// from the mountpoint name.
+func discoverPartitionMounts() []mountEntry {
+	data, err := os.ReadFile("/proc/self/mountinfo")
+	if err != nil {
+		return nil
+	}
+	var out []mountEntry
+	for _, line := range strings.Split(string(data), "\n") {
+		halves := strings.SplitN(line, " - ", 2)
+		if len(halves) != 2 {
+			continue
+		}
+		left := strings.Fields(halves[0])
+		right := strings.Fields(halves[1])
+		if len(left) < 5 || len(right) < 2 {
+			continue
+		}
+		root, mount := unescapeMountField(left[3]), unescapeMountField(left[4])
+		fstype, device := right[0], right[1]
+		if root != "/" {
+			continue // bind mount of a subpath, not the filesystem's own mount
+		}
+		if pseudoFSTypes[fstype] || !strings.HasPrefix(device, "/dev/") {
+			continue
+		}
+		out = append(out, mountEntry{device: device, mount: mount, fstype: fstype})
+	}
+	return out
+}
+
+// unescapeMountField decodes the octal escapes (e.g. \040 for a space) that
+// /proc/*/mountinfo and /proc/mounts use for whitespace and backslashes
+// inside paths.
+func unescapeMountField(s string) string {
+	if !strings.Contains(s, `\`) {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+3 < len(s) {
+			if v, err := strconv.ParseUint(s[i+1:i+4], 8, 8); err == nil {
+				b.WriteByte(byte(v))
+				i += 3
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+// espMaxBytes is the largest size a real-world EFI System Partition is ever
+// created at; a FAT-family filesystem this small is almost certainly one,
+// wherever it happens to be mounted.
+const espMaxBytes = 2 << 30 // 2 GiB
+
+// isTechnicalMount reports whether a mounted partition is firmware/bootstrap
+// storage rather than somewhere real system or user data lives, so it can be
+// kept out of the dashboard's partitions list: an EFI System Partition (by
+// mountpoint convention or, wherever it's mounted, a small FAT-family
+// filesystem) or a standalone /boot.
+func isTechnicalMount(mount, fstype string, totalBytes uint64) bool {
+	if mount == "/boot" || mount == "/efi" || strings.HasPrefix(mount, "/boot/") {
+		return true
+	}
+	switch fstype {
+	case "vfat", "msdos", "exfat":
+		return totalBytes > 0 && totalBytes <= espMaxBytes
+	}
+	return false
 }
 
 func readSysfsTrimmed(path string) string {

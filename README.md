@@ -208,7 +208,8 @@ zone.
   "architecture": "x86_64", "virtualization": "none", "cores_total": 12, "boot_time": "2026-07-31T13:22:21Z",
   "cpu_vendor": "AuthenticAMD", "cpu_model": "AMD Ryzen 5 7530U with Radeon Graphics", "cpu_mhz": 4547.9, "cpu_mhz_is_max": true,
   "ram_total_kb": 32180436, "ram_frequency_mhz": 0,
-  "disks": [{ "device": "nvme0n1", "model": "MTFDKBA512QFM-1BD1AABHA", "size_bytes": 512110190592 }],
+  "disks": [{ "device": "nvme0n1", "model": "MTFDKBA512QFM-1BD1AABHA", "size_bytes": 512110190592, "kind": "SSD",
+    "partitions": [{ "device": "nvme0n1p2", "fs_type": "ext4", "mount": "/", "total_bytes": 501809635328, "used_bytes": 234733932544, "avail_bytes": 241509900288, "used_pct": 46.8 }] }],
   "usb_devices": [{ "vendor_id": "0bda", "product_id": "b85c", "manufacturer": "Realtek", "product": "Bluetooth Radio" }]
 }
 ```
