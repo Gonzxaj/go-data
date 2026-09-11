@@ -67,7 +67,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker tab
       - /var/log:/var/log:ro                            # SSH watch
-      - /proc:/hostproc:ro                               # connection watch
+      - /proc:/hostproc:ro                               # connection watch, partitions
+      - /:/hostfs:ro,rslave                              # partition usage (disks tab)
     environment:
       - USE_INFLUX=true
       - INFLUX_URL=http://influx:8086
@@ -96,7 +97,7 @@ services:
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=change-me
 ```
 
-Any of the three volume mounts can be dropped if you don't need that tab —
+Any of the four volume mounts can be dropped if you don't need that tab —
 the app degrades gracefully instead of crashing. Replace every `change-me`
 before exposing this to the internet.
 
@@ -129,14 +130,19 @@ All settings can be set as environment variables (they override
 | `CONN_WATCH_PORTS` | Extra ports to always watch, comma-separated (e.g. `25565,7777`). | none |
 | `DISK_MOUNTS` | Which mount points to show in the Disk tab, comma-separated. Empty = auto-detect. | auto |
 | `DATA_DIR` | Where local logs (reboot history, SSH/connection events) are stored. | `./data` |
-| `HOST_PROC_PATH` | `/proc` path used for connection watching and the CPU top-processes list. Auto-detects `/hostproc` if mounted. | auto |
+| `HOST_PROC_PATH` | `/proc` path used for connection watching, the CPU top-processes list, and partition detection. Auto-detects `/hostproc` if mounted. | auto |
+| `HOST_ROOT_PATH` | Bind mount of the host's real `/`, used to read actual usage for the partitions listed under each physical disk. Auto-detects `/hostfs` if mounted. Without it, disks still show but with no partitions. | auto |
 | `AUTH_ENABLED` | Require HTTP Basic Auth for the dashboard and API. Needs `AUTH_USER`/`AUTH_PASSWORD` set, or the app refuses to start. | `false` |
 | `AUTH_USER` | Basic Auth username. | — |
 | `AUTH_PASSWORD` | Basic Auth password. | — |
 
 `SSH_WATCH_ENABLED` needs `/var/log` mounted read-only into the container.
 `CONN_WATCH_ENABLED` needs the host's `/proc` mounted read-only (as
-`/hostproc`).
+`/hostproc`). Partition usage under each physical disk needs the host's
+real `/` bind-mounted read-only (as `/hostfs`, with `rslave` propagation so
+separately-mounted partitions like `/mnt/data` are visible too) — without
+it, the disks themselves still show (model, size, HDD/SSD), just with no
+partitions underneath.
 
 ## API
 

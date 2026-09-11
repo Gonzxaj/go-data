@@ -14,7 +14,11 @@ import (
 )
 
 // CollectHostInfo gathers static-ish host info once, at process start.
-func CollectHostInfo() domain.HostInfo {
+// hostProcPath and hostRootPath are only needed for partition detection
+// (see readDiskInfo) — every other field is read straight from this
+// process's own /proc and /sys, which already reflect the host's real
+// values regardless of containerization.
+func CollectHostInfo(hostProcPath, hostRootPath string) domain.HostInfo {
 	hostname, _ := os.Hostname()
 	osName, osVersion := readOSRelease()
 	cpuVendor, cpuModel := readCPUIdentity()
@@ -39,7 +43,7 @@ func CollectHostInfo() domain.HostInfo {
 		RAMTotalKB:      ram.TotalKB,
 		RAMFrequencyMHz: readRAMFrequencyMHz(),
 
-		Disks:      readDiskInfo(),
+		Disks:      readDiskInfo(hostProcPath, hostRootPath),
 		USBDevices: readUSBDevices(),
 	}
 }
@@ -199,8 +203,10 @@ func readRAMFrequencyMHz() float64 {
 
 // readDiskInfo reads model + capacity for every real block device (same
 // device set diskio.go tracks), from sysfs — no privileges required — and
-// attaches the relevant mounted partitions found on each one.
-func readDiskInfo() []domain.DiskInfo {
+// attaches the relevant mounted partitions found on each one. hostProcPath
+// and hostRootPath are only used to see past container isolation — see
+// readDiskPartitions.
+func readDiskInfo(hostProcPath, hostRootPath string) []domain.DiskInfo {
 	entries, err := os.ReadDir("/sys/block")
 	if err != nil {
 		return nil
@@ -212,7 +218,7 @@ func readDiskInfo() []domain.DiskInfo {
 		}
 	}
 	parents := buildPartitionParents(diskNames)
-	byDisk := readDiskPartitions(parents)
+	byDisk := readDiskPartitions(parents, hostProcPath, hostRootPath)
 
 	var out []domain.DiskInfo
 	for _, name := range diskNames {
@@ -309,14 +315,37 @@ func partitionParentDisk(devName string, parents map[string]string) string {
 // standalone /boot, ...) are then dropped by isTechnicalMount; swap and MSR
 // partitions carry no filesystem, so they were never mountable in the first
 // place and need no special-casing.
-func readDiskPartitions(parents map[string]string) map[string][]domain.PartitionInfo {
+//
+// hostRootPath, when set (a bind mount of the host's real "/" — see
+// discoverPartitionMounts for why hostProcPath alone can't get us this),
+// is where each mountpoint's actual bytes are read from; the mountpoint
+// reported in the result is always the host's real one, never the
+// translated path.
+//
+// Without hostRootPath, statfs-ing a mountpoint discovered through another
+// namespace's mountinfo (hostProcPath pointing at a bind-mounted host
+// /proc) would silently read *this* container's own filesystem instead —
+// e.g. its overlay root just happens to statfs successfully at "/" — and
+// misattribute those numbers to the host partition. Rather than risk
+// reporting plausible-looking but wrong usage, this bails out to no
+// partitions at all (disks themselves still show fine) unless either
+// hostRootPath gives a real translated path, or hostProcPath is the plain
+// "/proc" default that means we're not containerized in the first place.
+func readDiskPartitions(parents map[string]string, hostProcPath, hostRootPath string) map[string][]domain.PartitionInfo {
+	if hostRootPath == "" && hostProcPath != "/proc" {
+		return nil
+	}
 	byDisk := map[string][]domain.PartitionInfo{}
-	for _, m := range discoverPartitionMounts() {
-		d, ok := statMount(m)
-		if !ok {
-			continue
+	for _, m := range discoverPartitionMounts(hostProcPath) {
+		statPath := m.mount
+		if hostRootPath != "" {
+			statPath = filepath.Join(hostRootPath, m.mount)
 		}
-		if isTechnicalMount(d.Mount, d.FSType, d.TotalBytes) {
+		d, ok := statMount(mountEntry{device: m.device, mount: statPath, fstype: m.fstype})
+		if !ok {
+			continue // e.g. hostRootPath isn't actually mounted/reachable — skip rather than show zeros
+		}
+		if isTechnicalMount(m.mount, d.FSType, d.TotalBytes) {
 			continue
 		}
 		devName := strings.TrimPrefix(m.device, "/dev/")
@@ -325,7 +354,7 @@ func readDiskPartitions(parents map[string]string) map[string][]domain.Partition
 			continue // couldn't attribute to exactly one physical disk (e.g. a striped RAID volume) — skip rather than guess
 		}
 		byDisk[parent] = append(byDisk[parent], domain.PartitionInfo{
-			Device: devName, FSType: d.FSType, Mount: d.Mount,
+			Device: devName, FSType: d.FSType, Mount: m.mount,
 			TotalBytes: d.TotalBytes, UsedBytes: d.UsedBytes, AvailBytes: d.AvailBytes, UsedPct: d.UsedPct,
 		})
 	}
@@ -335,18 +364,29 @@ func readDiskPartitions(parents map[string]string) map[string][]domain.Partition
 	return byDisk
 }
 
-// discoverPartitionMounts reads /proc/self/mountinfo — richer than
+// discoverPartitionMounts reads PID 1's /proc/[pid]/mountinfo — richer than
 // /proc/mounts, since it also reports each mount's "root": the path *within
-// the source filesystem* that got mounted there. A genuine mount of an
-// entire partition always has root "/". Anything else — root being some
-// subpath — means it's a bind mount of just that subdirectory or file, which
-// is exactly how Docker exposes /etc/hostname, /etc/hosts, /etc/resolv.conf,
-// /var/log, and volumes from the host: same underlying device as the host's
-// real partition, but not the partition's own mount. Filtering on root "/"
-// is what actually tells partitions apart from those, rather than guessing
-// from the mountpoint name.
-func discoverPartitionMounts() []mountEntry {
-	data, err := os.ReadFile("/proc/self/mountinfo")
+// the source filesystem* that got mounted there — through hostProcPath, the
+// same "read PID 1's namespace instead of our own" trick readSockets and
+// ConnWatcher already rely on (see sockets.go): inside a container, this
+// process's own mount namespace is just the container's, so /proc/self/
+// mountinfo would only ever show the container's own near-irrelevant mounts.
+// PID 1's is the host's real, full mount table when hostProcPath is a
+// mounted host /proc (auto-detected as /hostproc), and this process's own
+// otherwise.
+//
+// A genuine mount of an entire partition always has root "/". Anything
+// else — root being some subpath — means it's a bind mount of just that
+// subdirectory or file, which is exactly how Docker exposes /etc/hostname,
+// /etc/hosts, /etc/resolv.conf, /var/log, and volumes from the host: same
+// underlying device as the host's real partition, but not the partition's
+// own mount. Filtering on root "/" is what actually tells partitions apart
+// from those, rather than guessing from the mountpoint name — and, read
+// this way, container-private bind mounts don't even show up in the first
+// place, since they live in a mount namespace of their own that PID 1 never
+// sees.
+func discoverPartitionMounts(hostProcPath string) []mountEntry {
+	data, err := os.ReadFile(filepath.Join(hostProcPath, "1", "mountinfo"))
 	if err != nil {
 		return nil
 	}

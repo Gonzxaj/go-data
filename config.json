@@ -14,5 +14,6 @@
   "conn_watch_enabled": true,
   "conn_watch_auto": true,
   "conn_watch_ports": [],
-  "host_proc_path": ""
+  "host_proc_path": "",
+  "host_root_path": ""
 }

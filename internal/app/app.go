@@ -32,7 +32,7 @@ func Build(cfg config.Config) {
 	procCollector := collector.NewProcessCollector(cfg.HostProcPath)
 	uptimeLog := uptime.NewLog(cfg.DataDir)
 	alarmEval := alarm.NewEvaluator(alarm.DefaultThresholds())
-	host := collector.CollectHostInfo()
+	host := collector.CollectHostInfo(cfg.HostProcPath, cfg.HostRootPath)
 
 	var dockerCollector *collector.DockerCollector
 	if cfg.DockerEnabled {
