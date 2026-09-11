@@ -16,20 +16,20 @@ func TestParseSSHLine(t *testing.T) {
 		success bool
 	}{
 		{
-			line:    `Jul 31 17:35:01 host sshd[1234]: Failed password for invalid user admin from 45.83.66.10 port 51000 ssh2`,
-			wantOK:  true, ip: "45.83.66.10", user: "admin", action: "failed", success: false,
+			line:   `Jul 31 17:35:01 host sshd[1234]: Failed password for invalid user admin from 45.83.66.10 port 51000 ssh2`,
+			wantOK: true, ip: "45.83.66.10", user: "admin", action: "failed", success: false,
 		},
 		{
-			line:    `Jul 31 17:35:01 host sshd[1234]: Accepted publickey for gonzxa from 192.168.0.5 port 51000 ssh2: ED25519 SHA256:abc`,
-			wantOK:  true, ip: "192.168.0.5", user: "gonzxa", action: "accepted", success: true,
+			line:   `Jul 31 17:35:01 host sshd[1234]: Accepted publickey for gonzxa from 192.168.0.5 port 51000 ssh2: ED25519 SHA256:abc`,
+			wantOK: true, ip: "192.168.0.5", user: "gonzxa", action: "accepted", success: true,
 		},
 		{
-			line:    `Jul 31 17:35:01 host sshd[1234]: Accepted password for gonzxa from 192.168.0.5 port 22001 ssh2`,
-			wantOK:  true, ip: "192.168.0.5", user: "gonzxa", action: "accepted", success: true,
+			line:   `Jul 31 17:35:01 host sshd[1234]: Accepted password for gonzxa from 192.168.0.5 port 22001 ssh2`,
+			wantOK: true, ip: "192.168.0.5", user: "gonzxa", action: "accepted", success: true,
 		},
 		{
-			line:    `Jul 31 17:35:01 host sshd[1234]: Invalid user root from 45.83.66.10 port 51000`,
-			wantOK:  true, ip: "45.83.66.10", user: "root", action: "invalid_user", success: false,
+			line:   `Jul 31 17:35:01 host sshd[1234]: Invalid user root from 45.83.66.10 port 51000`,
+			wantOK: true, ip: "45.83.66.10", user: "root", action: "invalid_user", success: false,
 		},
 		{
 			line:   `Jul 31 17:35:01 host sshd[1234]: Connection closed by authenticating user root 45.83.66.10 port 51000 [preauth]`,
@@ -61,21 +61,6 @@ func TestParseSSHLine(t *testing.T) {
 		if e.Success != c.success {
 			t.Errorf("line %q: Success=%v want %v", c.line, e.Success, c.success)
 		}
-	}
-}
-
-func TestDecodeHexAddr(t *testing.T) {
-	if got := decodeHexAddr("0100007F"); got == nil || got.String() != "127.0.0.1" {
-		t.Fatalf("decodeHexAddr(IPv4 loopback) = %v", got)
-	}
-	if got := decodeHexAddr("bogus"); got != nil {
-		t.Fatalf("decodeHexAddr(invalid) = %v, want nil", got)
-	}
-}
-
-func TestDecodeHexPort(t *testing.T) {
-	if got := decodeHexPort("0050"); got != 80 {
-		t.Fatalf("decodeHexPort(0050) = %d, want 80", got)
 	}
 }
 

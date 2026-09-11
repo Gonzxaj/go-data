@@ -1,21 +1,13 @@
 package security
 
 import (
-	"bufio"
 	"context"
-	"encoding/hex"
 	"go-data/internal/domain"
-	"net"
-	"os"
+	"go-data/internal/eventlog"
+	"go-data/internal/procnet"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
-)
-
-const (
-	tcpStateEstablished = "01"
-	tcpStateListen      = "0A"
 )
 
 // ConnWatcher periodically scans the TCP connection table for established
@@ -33,7 +25,7 @@ type ConnWatcher struct {
 	explicitPorts map[int]bool
 	auto          bool
 	procPath      string // "/proc" when unmounted, or a mounted host /proc (e.g. "/hostproc")
-	log           *EventLog[domain.ConnectionEvent]
+	log           *eventlog.Log[domain.ConnectionEvent]
 
 	prevActive map[string]bool
 }
@@ -47,7 +39,7 @@ func NewConnWatcher(explicitPorts []int, auto bool, procPath, dataDir string) *C
 		explicitPorts: m,
 		auto:          auto,
 		procPath:      procPath,
-		log:           NewEventLog[domain.ConnectionEvent](dataDir, "connection_events.jsonl", 500),
+		log:           eventlog.New[domain.ConnectionEvent](dataDir, "connection_events.jsonl", 500),
 		prevActive:    map[string]bool{},
 	}
 }
@@ -76,9 +68,9 @@ func (w *ConnWatcher) tcpFiles() []string {
 }
 
 func (w *ConnWatcher) poll() {
-	var entries []tcpEntry
+	var entries []procnet.Entry
 	for _, path := range w.tcpFiles() {
-		entries = append(entries, readTCPEntries(path)...)
+		entries = append(entries, procnet.ReadEntries(path)...)
 	}
 
 	watched := map[int]bool{}
@@ -87,21 +79,21 @@ func (w *ConnWatcher) poll() {
 	}
 	if w.auto {
 		for _, e := range entries {
-			if e.state == tcpStateListen && !e.localIP.IsLoopback() {
-				watched[e.localPort] = true
+			if e.State == procnet.TCPListen && !e.LocalIP.IsLoopback() {
+				watched[e.LocalPort] = true
 			}
 		}
 	}
 
 	active := map[string]bool{}
 	for _, e := range entries {
-		if e.state != tcpStateEstablished || !watched[e.localPort] {
+		if e.State != procnet.TCPEstablished || !watched[e.LocalPort] {
 			continue
 		}
-		key := e.remoteIP + "|" + strconv.Itoa(e.localPort)
+		key := e.RemoteIP.String() + "|" + strconv.Itoa(e.LocalPort)
 		active[key] = true
 		if !w.prevActive[key] {
-			w.log.Append(domain.ConnectionEvent{Time: time.Now(), IP: e.remoteIP, LocalPort: e.localPort})
+			w.log.Append(domain.ConnectionEvent{Time: time.Now(), IP: e.RemoteIP.String(), LocalPort: e.LocalPort})
 		}
 	}
 	w.prevActive = active
@@ -109,74 +101,4 @@ func (w *ConnWatcher) poll() {
 
 func (w *ConnWatcher) Recent(n int) []domain.ConnectionEvent {
 	return w.log.Recent(n)
-}
-
-type tcpEntry struct {
-	localIP   net.IP
-	localPort int
-	remoteIP  string
-	state     string
-}
-
-func readTCPEntries(path string) []tcpEntry {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-
-	var out []tcpEntry
-	scanner := bufio.NewScanner(f)
-	scanner.Scan() // header line
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) < 4 {
-			continue
-		}
-		localParts := strings.SplitN(fields[1], ":", 2)
-		remoteParts := strings.SplitN(fields[2], ":", 2)
-		if len(localParts) != 2 || len(remoteParts) != 2 {
-			continue
-		}
-		localIP := decodeHexAddr(localParts[0])
-		localPort := decodeHexPort(localParts[1])
-		remoteIP := decodeHexAddr(remoteParts[0])
-		if localIP == nil || localPort == 0 || remoteIP == nil {
-			continue
-		}
-		out = append(out, tcpEntry{
-			localIP: localIP, localPort: localPort,
-			remoteIP: remoteIP.String(), state: strings.ToUpper(fields[3]),
-		})
-	}
-	return out
-}
-
-func decodeHexPort(h string) int {
-	v, err := strconv.ParseUint(h, 16, 32)
-	if err != nil {
-		return 0
-	}
-	return int(v)
-}
-
-// decodeHexAddr decodes /proc/net/tcp{,6}'s address encoding: each 4-byte
-// group is stored little-endian, so within every 8-hex-char chunk the byte
-// order must be reversed (IPv6 has 4 such chunks concatenated).
-func decodeHexAddr(h string) net.IP {
-	if len(h) != 8 && len(h) != 32 {
-		return nil
-	}
-	raw := make([]byte, 0, 16)
-	for i := 0; i < len(h); i += 8 {
-		chunk, err := hex.DecodeString(h[i : i+8])
-		if err != nil || len(chunk) != 4 {
-			return nil
-		}
-		raw = append(raw, chunk[3], chunk[2], chunk[1], chunk[0])
-	}
-	if len(raw) == 4 {
-		return net.IPv4(raw[0], raw[1], raw[2], raw[3])
-	}
-	return net.IP(raw)
 }

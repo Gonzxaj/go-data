@@ -5,6 +5,7 @@ import (
 	"go-data/internal/alarm"
 	"go-data/internal/collector"
 	"go-data/internal/domain"
+	"go-data/internal/netmon"
 	"go-data/internal/security"
 	"go-data/internal/storage"
 	"go-data/internal/uptime"
@@ -19,6 +20,7 @@ type Handler struct {
 	Uptime *uptime.Log
 	SSH    *security.SSHWatcher  // nil if disabled/log not found
 	Conn   *security.ConnWatcher // nil if disabled
+	NetMon *netmon.Monitor       // nil if disabled
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -30,6 +32,12 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/uptime/sessions", h.UptimeSessions)
 	mux.HandleFunc("/api/security/ssh", h.SSHEvents)
 	mux.HandleFunc("/api/security/connections", h.ConnectionEvents)
+	mux.HandleFunc("/api/network/summary", h.NetSummary)
+	mux.HandleFunc("/api/network/connections", h.NetConnections)
+	mux.HandleFunc("/api/network/top", h.NetTop)
+	mux.HandleFunc("/api/network/events", h.NetEvents)
+	mux.HandleFunc("/api/network/ip-history", h.NetIPHistory)
+	mux.HandleFunc("/api/network/history", h.NetHistory)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

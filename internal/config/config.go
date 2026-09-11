@@ -8,6 +8,12 @@ import (
 )
 
 type Config struct {
+	// Port is what the HTTP server listens on. Only needs setting explicitly
+	// when network_mode: host is used (docker-compose's ports: mapping is
+	// ignored in that mode, so this is the only way to pick the externally
+	// visible port) — 9000 otherwise.
+	Port int `json:"port,omitempty"`
+
 	// UseInflux persists metrics to InfluxDB in addition to the in-memory
 	// ring buffer. The memory buffer itself is not optional: /api/stats and
 	// /api/history always read from it, since it's what makes the live
@@ -30,6 +36,14 @@ type Config struct {
 	ConnWatchPorts   []int  `json:"conn_watch_ports,omitempty"` // extra ports to always watch, on top of auto-discovery (or instead of it, if conn_watch_auto is false)
 	HostProcPath     string `json:"host_proc_path,omitempty"`   // empty = auto-detect ("/hostproc" if mounted, else "/proc")
 
+	// NetMonEnabled turns on the general network-connections monitor (all
+	// ports, both directions, TCP+UDP) — a broader, decoupled sibling of
+	// ConnWatch above, not a replacement for it.
+	NetMonEnabled       bool `json:"netmon_enabled"`
+	NetMonIntervalSec   int  `json:"netmon_interval_sec,omitempty"`   // 0 = default (10)
+	NetMonForceFallback bool `json:"netmon_force_fallback"`           // force TCP-only proc/net/tcp visibility even if conntrack works (testing)
+	NetMonIPHistoryCap  int  `json:"netmon_ip_history_cap,omitempty"` // 0 = default (10000)
+
 	AuthEnabled  bool   `json:"auth_enabled"`
 	AuthUser     string `json:"auth_user,omitempty"`
 	AuthPassword string `json:"auth_password,omitempty"`
@@ -41,8 +55,13 @@ type Config struct {
 // baseline shipped with the image.
 func Load() Config {
 	file, _ := os.ReadFile("config.json")
-	cfg := Config{DockerEnabled: true, DataDir: "./data", ConnWatchAuto: true}
+	cfg := Config{Port: 9000, DockerEnabled: true, DataDir: "./data", ConnWatchAuto: true, NetMonEnabled: true}
 	json.Unmarshal(file, &cfg)
+
+	cfg.Port = envInt("PORT", cfg.Port)
+	if cfg.Port == 0 {
+		cfg.Port = 9000
+	}
 
 	cfg.UseInflux = envBool("USE_INFLUX", cfg.UseInflux)
 	cfg.InfluxURL = envString("INFLUX_URL", cfg.InfluxURL)
@@ -61,6 +80,11 @@ func Load() Config {
 	cfg.ConnWatchAuto = envBool("CONN_WATCH_AUTO", cfg.ConnWatchAuto)
 	cfg.ConnWatchPorts = envIntList("CONN_WATCH_PORTS", cfg.ConnWatchPorts)
 	cfg.HostProcPath = envString("HOST_PROC_PATH", cfg.HostProcPath)
+
+	cfg.NetMonEnabled = envBool("NETMON_ENABLED", cfg.NetMonEnabled)
+	cfg.NetMonIntervalSec = envInt("NETMON_INTERVAL_SEC", cfg.NetMonIntervalSec)
+	cfg.NetMonForceFallback = envBool("NETMON_FORCE_FALLBACK", cfg.NetMonForceFallback)
+	cfg.NetMonIPHistoryCap = envInt("NETMON_IP_HISTORY_CAP", cfg.NetMonIPHistoryCap)
 
 	cfg.AuthEnabled = envBool("AUTH_ENABLED", cfg.AuthEnabled)
 	cfg.AuthUser = envString("AUTH_USER", cfg.AuthUser)
@@ -95,6 +119,18 @@ func envBool(key string, def bool) bool {
 		return def
 	}
 	return b
+}
+
+func envInt(key string, def int) int {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
 }
 
 // envStringList parses a comma-separated env var, e.g. "/,/data".

@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"go-data/internal/domain"
+	"go-data/internal/eventlog"
 	"os"
 	"regexp"
 	"strings"
@@ -30,7 +31,7 @@ type SSHWatcher struct {
 	dataDir      string
 
 	path   string // resolved lazily, once found
-	log    *EventLog[domain.SSHEvent]
+	log    *eventlog.Log[domain.SSHEvent]
 	offset int64
 	inode  uint64
 }
@@ -43,7 +44,7 @@ func NewSSHWatcher(path, dataDir string) *SSHWatcher {
 	return &SSHWatcher{
 		explicitPath: path,
 		dataDir:      dataDir,
-		log:          NewEventLog[domain.SSHEvent](dataDir, "ssh_events.jsonl", 500),
+		log:          eventlog.New[domain.SSHEvent](dataDir, "ssh_events.jsonl", 500),
 	}
 }
 

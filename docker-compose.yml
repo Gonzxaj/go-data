@@ -4,16 +4,28 @@ services:
   app:
     build: .
     image: gonzxa/go-data:latest
-    ports:
-      - "19245:9000"
+    # Host networking (instead of bridge + published port) so the network
+    # monitor's netlink conntrack socket resolves against the HOST's root
+    # network namespace, not this container's own — otherwise it would only
+    # ever see this container's own traffic, never sibling containers'
+    # (Minecraft/Crafty/etc.) connections. Docker ignores `ports:` entirely
+    # in this mode, so PORT below is what makes the dashboard still land on
+    # :19245 instead of the app's default :9000.
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log:/var/log:ro
       - /proc:/hostproc:ro
       - app-data:/app/data
     environment:
+      - PORT=19245
       - USE_INFLUX=true
-      - INFLUX_URL=http://influx:8086
+      # Compose's embedded DNS (http://influx:8086) isn't reachable once
+      # this service is off the shared bridge network — reach influx via
+      # its own published host port instead.
+      - INFLUX_URL=http://localhost:19246
       - INFLUX_TOKEN=${INFLUXDB_ADMIN_TOKEN}
       - INFLUX_ORG=${INFLUXDB_ORG}
       - INFLUX_BUCKET=${INFLUXDB_BUCKET}
@@ -21,6 +33,7 @@ services:
       - SSH_WATCH_ENABLED=true
       - CONN_WATCH_ENABLED=true
       - CONN_WATCH_AUTO=true
+      - NETMON_ENABLED=true
       - AUTH_ENABLED=true
       - AUTH_USER=${AUTH_USER}
       - AUTH_PASSWORD=${AUTH_PASSWORD}

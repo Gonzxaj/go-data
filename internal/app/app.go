@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"go-data/internal/alarm"
 	"go-data/internal/api"
 	"go-data/internal/auth"
 	"go-data/internal/collector"
 	"go-data/internal/config"
+	"go-data/internal/netmon"
 	"go-data/internal/security"
 	"go-data/internal/storage"
 	"go-data/internal/uptime"
@@ -21,8 +23,9 @@ func Build(cfg config.Config) {
 	var stores []storage.Storage
 	stores = append(stores, mem)
 
+	var inf *storage.InfluxStore
 	if cfg.UseInflux {
-		inf := storage.NewInfluxStore(cfg.InfluxURL, cfg.Token, cfg.Org, cfg.Bucket)
+		inf = storage.NewInfluxStore(cfg.InfluxURL, cfg.Token, cfg.Org, cfg.Bucket)
 		stores = append(stores, inf)
 	}
 
@@ -56,6 +59,30 @@ func Build(cfg config.Config) {
 		go connWatcher.Run(context.Background(), 5*time.Second)
 	}
 
+	var netMonitor *netmon.Monitor
+	if cfg.NetMonEnabled {
+		// inf may be a nil *storage.InfluxStore; wrapping that directly in
+		// the netmon.PointWriter interface would make it a non-nil
+		// interface holding a nil pointer, which netmon's own "== nil"
+		// check can't see through — so only assign the interface when inf
+		// is genuinely non-nil.
+		var pw netmon.PointWriter
+		if inf != nil {
+			pw = inf
+		}
+		netMonitor = netmon.New(netmon.Config{
+			ProcPath:      cfg.HostProcPath,
+			DataDir:       cfg.DataDir,
+			ForceFallback: cfg.NetMonForceFallback,
+			IPHistoryCap:  cfg.NetMonIPHistoryCap,
+		}, pw)
+		interval := 10 * time.Second
+		if cfg.NetMonIntervalSec > 0 {
+			interval = time.Duration(cfg.NetMonIntervalSec) * time.Second
+		}
+		go netMonitor.Run(context.Background(), interval)
+	}
+
 	go func() {
 		for {
 			now := time.Now()
@@ -77,6 +104,7 @@ func Build(cfg config.Config) {
 		Uptime: uptimeLog,
 		SSH:    sshWatcher,
 		Conn:   connWatcher,
+		NetMon: netMonitor,
 	}
 	mux := http.NewServeMux()
 	h.Register(mux)
@@ -90,5 +118,5 @@ func Build(cfg config.Config) {
 		handler = auth.BasicAuth(cfg.AuthUser, cfg.AuthPassword, mux)
 	}
 
-	http.ListenAndServe(":9000", handler)
+	http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), handler)
 }

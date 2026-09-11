@@ -14,5 +14,10 @@
   "conn_watch_enabled": true,
   "conn_watch_auto": true,
   "conn_watch_ports": [],
-  "host_proc_path": ""
+  "host_proc_path": "",
+
+  "netmon_enabled": true,
+  "netmon_interval_sec": 10,
+  "netmon_force_fallback": false,
+  "netmon_ip_history_cap": 10000
 }

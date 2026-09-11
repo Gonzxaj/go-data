@@ -1,9 +1,8 @@
-// Package security watches host-level signals the mini monitoring system
-// doesn't get from /proc alone: SSH authentication attempts (from the auth
-// log) and incoming TCP connections to configured ports (e.g. game servers),
-// so both can be reviewed later even though they're transient events, not
-// numeric time series.
-package security
+// Package eventlog provides a small, capped, disk-persisted append log for
+// transient events (things worth reviewing later even though they're not a
+// numeric time series). It's domain-agnostic — used by the SSH watcher, the
+// connection watcher, and the network monitor alike.
+package eventlog
 
 import (
 	"bufio"
@@ -13,11 +12,11 @@ import (
 	"sync"
 )
 
-// EventLog is a small, capped, append-only-on-disk log of recent events of
-// type T. It mirrors the pattern used by internal/uptime.Log: rewritten
-// whole on every append (cheap at this size), so it survives process
-// restarts without needing a real database.
-type EventLog[T any] struct {
+// Log is a small, capped, append-only-on-disk log of recent events of type
+// T. It mirrors the pattern used by internal/uptime.Log: rewritten whole on
+// every append (cheap at this size), so it survives process restarts
+// without needing a real database.
+type Log[T any] struct {
 	path string
 	cap  int
 
@@ -25,17 +24,17 @@ type EventLog[T any] struct {
 	events []T
 }
 
-func NewEventLog[T any](dataDir, filename string, capacity int) *EventLog[T] {
+func New[T any](dataDir, filename string, capacity int) *Log[T] {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
 	os.MkdirAll(dataDir, 0o755)
-	l := &EventLog[T]{path: filepath.Join(dataDir, filename), cap: capacity}
+	l := &Log[T]{path: filepath.Join(dataDir, filename), cap: capacity}
 	l.events = l.load()
 	return l
 }
 
-func (l *EventLog[T]) Append(e T) {
+func (l *Log[T]) Append(e T) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.events = append(l.events, e)
@@ -46,7 +45,7 @@ func (l *EventLog[T]) Append(e T) {
 }
 
 // Recent returns up to n events, most recent first.
-func (l *EventLog[T]) Recent(n int) []T {
+func (l *Log[T]) Recent(n int) []T {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if n <= 0 || n > len(l.events) {
@@ -59,7 +58,7 @@ func (l *EventLog[T]) Recent(n int) []T {
 	return out
 }
 
-func (l *EventLog[T]) load() []T {
+func (l *Log[T]) load() []T {
 	f, err := os.Open(l.path)
 	if err != nil {
 		return nil
@@ -78,7 +77,7 @@ func (l *EventLog[T]) load() []T {
 	return out
 }
 
-func (l *EventLog[T]) persist() {
+func (l *Log[T]) persist() {
 	tmp := l.path + ".tmp"
 	f, err := os.Create(tmp)
 	if err != nil {
