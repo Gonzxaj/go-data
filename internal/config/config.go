@@ -35,6 +35,7 @@ type Config struct {
 	ConnWatchAuto    bool   `json:"conn_watch_auto"`            // auto-discover watched ports from whatever is LISTENing on a non-loopback address; default true
 	ConnWatchPorts   []int  `json:"conn_watch_ports,omitempty"` // extra ports to always watch, on top of auto-discovery (or instead of it, if conn_watch_auto is false)
 	HostProcPath     string `json:"host_proc_path,omitempty"`   // empty = auto-detect ("/hostproc" if mounted, else "/proc")
+	HostRootPath     string `json:"host_root_path,omitempty"`   // bind mount of the host's real "/", needed to read partition usage from inside a container; empty = auto-detect ("/hostfs" if mounted, else "" — native/non-container runs need no translation)
 
 	// NetMonEnabled turns on the general network-connections monitor (all
 	// ports, both directions, TCP+UDP) — a broader, decoupled sibling of
@@ -80,6 +81,7 @@ func Load() Config {
 	cfg.ConnWatchAuto = envBool("CONN_WATCH_AUTO", cfg.ConnWatchAuto)
 	cfg.ConnWatchPorts = envIntList("CONN_WATCH_PORTS", cfg.ConnWatchPorts)
 	cfg.HostProcPath = envString("HOST_PROC_PATH", cfg.HostProcPath)
+	cfg.HostRootPath = envString("HOST_ROOT_PATH", cfg.HostRootPath)
 
 	cfg.NetMonEnabled = envBool("NETMON_ENABLED", cfg.NetMonEnabled)
 	cfg.NetMonIntervalSec = envInt("NETMON_INTERVAL_SEC", cfg.NetMonIntervalSec)
@@ -97,6 +99,11 @@ func Load() Config {
 		cfg.HostProcPath = "/proc"
 		if _, err := os.Stat("/hostproc"); err == nil {
 			cfg.HostProcPath = "/hostproc"
+		}
+	}
+	if cfg.HostRootPath == "" {
+		if _, err := os.Stat("/hostfs"); err == nil {
+			cfg.HostRootPath = "/hostfs"
 		}
 	}
 	return cfg

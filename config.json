@@ -15,6 +15,7 @@
   "conn_watch_auto": true,
   "conn_watch_ports": [],
   "host_proc_path": "",
+  "host_root_path": "",
 
   "netmon_enabled": true,
   "netmon_interval_sec": 10,

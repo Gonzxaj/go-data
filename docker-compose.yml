@@ -18,6 +18,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log:/var/log:ro
       - /proc:/hostproc:ro
+      - /:/hostfs:ro,rslave
       - app-data:/app/data
     environment:
       - PORT=19245
