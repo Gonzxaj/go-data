@@ -1208,7 +1208,7 @@ async function tickNetwork() {
     const json = await fetchJSON("/api/network/ip-history?n=100");
     const rows = (json.enabled ? json.entries : []).map((e) => ({
       label: e.ip,
-      value: `${e.count} vez${e.count === 1 ? "" : "es"} · desde ${fmtEventTime(e.first_seen)} · última ${fmtEventTime(e.last_seen)}`,
+      value: `${e.connections} conexión${e.connections === 1 ? "" : "es"} · desde ${fmtEventTime(e.first_seen)} · última ${fmtEventTime(e.last_seen)}`,
     }));
     setRows(document.getElementById("netmon-ip-history"), rows, "sin historial todavía");
   } catch {

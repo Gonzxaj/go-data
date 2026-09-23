@@ -79,6 +79,7 @@ func New(cfg Config, influx PointWriter) *Monitor {
 	} else {
 		m.capability = CapabilityProcTCP
 	}
+	m.ipStore.Prune(discoverLocalNet().isLocal)
 	return m
 }
 
@@ -87,6 +88,7 @@ func (m *Monitor) Run(ctx context.Context, interval time.Duration) {
 		if m.ct != nil {
 			m.ct.Close()
 		}
+		m.ipStore.Close()
 	}()
 	m.poll()
 	t := time.NewTicker(interval)
@@ -104,7 +106,7 @@ func (m *Monitor) Run(ctx context.Context, interval time.Duration) {
 func (m *Monitor) poll() {
 	raw, capability := m.collect()
 	boundTCP, boundUDP := boundPorts(m.cfg.ProcPath)
-	flows := resolveDirection(raw, boundTCP, boundUDP)
+	flows := resolveDirection(raw, discoverLocalNet(), boundTCP, boundUDP)
 	now := time.Now()
 
 	active := make(map[string]bool, len(flows))
@@ -128,8 +130,9 @@ func (m *Monitor) poll() {
 			sample.Outbound++
 		}
 
-		m.ipStore.Observe(f.RemoteIP, now)
-		if !m.prevActive[key] {
+		isNew := !m.prevActive[key]
+		m.ipStore.Observe(f.RemoteIP, now, isNew)
+		if isNew {
 			m.events.Append(domain.NetFlowEvent{
 				Time: now, RemoteIP: f.RemoteIP, RemotePort: f.RemotePort,
 				LocalPort: f.LocalPort, Proto: f.Proto, Direction: f.Direction,
@@ -170,32 +173,41 @@ func (m *Monitor) collect() ([]rawFlow, string) {
 }
 
 // resolveDirection classifies each raw flow as inbound/outbound and splits
-// its two ends into remote/local, based purely on which side currently
-// looks like a locally-bound port — the same heuristic regardless of which
+// its two ends into remote/local — the same way regardless of which
 // collection mechanism produced the raw data.
-func resolveDirection(raw []rawFlow, boundTCP, boundUDP map[int]bool) []domain.NetFlow {
+//
+// Direction comes from addresses first: the original tuple's initiator is
+// the source, so an external source hitting a local destination is inbound
+// and a local (or container, via NAT) source reaching out is outbound.
+// Flows where both ends are local — loopback, host↔container,
+// container↔container — are host-internal and dropped: they're never a
+// real remote peer. Only when neither end is recognisably local (addresses
+// changed between polls, routed traffic) does it fall back to the
+// bound-port heuristic.
+func resolveDirection(raw []rawFlow, ln localNet, boundTCP, boundUDP map[int]bool) []domain.NetFlow {
 	out := make([]domain.NetFlow, 0, len(raw))
 	for _, f := range raw {
-		bound := boundTCP
-		if f.Proto == "udp" {
-			bound = boundUDP
+		srcLocal, dstLocal := ln.isLocal(f.SrcIP), ln.isLocal(f.DstIP)
+		if srcLocal && dstLocal {
+			continue
+		}
+
+		inbound := dstLocal
+		if !srcLocal && !dstLocal {
+			bound := boundTCP
+			if f.Proto == "udp" {
+				bound = boundUDP
+			}
+			inbound = bound[f.DstPort] || !bound[f.SrcPort]
 		}
 
 		var remoteIP string
 		var remotePort, localPort int
 		var direction string
-		switch {
-		case bound[f.DstPort]:
+		if inbound {
 			direction, remoteIP, remotePort, localPort = "inbound", f.SrcIP.String(), f.SrcPort, f.DstPort
-		case bound[f.SrcPort]:
+		} else {
 			direction, remoteIP, remotePort, localPort = "outbound", f.DstIP.String(), f.DstPort, f.SrcPort
-		default:
-			// Neither side is a currently-known local port (e.g. a flow
-			// between two locally-bound services, or a momentary gap
-			// between conntrack seeing it and our LISTEN-table poll).
-			// Default to treating the destination as local — matches the
-			// server-accepting-a-connection convention.
-			direction, remoteIP, remotePort, localPort = "inbound", f.SrcIP.String(), f.SrcPort, f.DstPort
 		}
 
 		out = append(out, domain.NetFlow{

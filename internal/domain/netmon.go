@@ -14,13 +14,15 @@ type NetFlow struct {
 	State      string `json:"state"`     // tcp: established/time_wait/...; udp: assured/active
 }
 
-// NetIPHistory tracks first/last-seen and total sightings for a remote IP,
-// across all ports and protocols. Upserted in place, not appended.
+// NetIPHistory tracks first/last-seen and total distinct connections for a
+// remote IP, across all ports and protocols. Upserted in place, not
+// appended. Connections counts new flows (edge-triggered, like
+// NetFlowEvent), not polls a long-lived flow stayed open for.
 type NetIPHistory struct {
-	IP        string    `json:"ip"`
-	FirstSeen time.Time `json:"first_seen"`
-	LastSeen  time.Time `json:"last_seen"`
-	Count     int64     `json:"count"`
+	IP          string    `json:"ip"`
+	FirstSeen   time.Time `json:"first_seen"`
+	LastSeen    time.Time `json:"last_seen"`
+	Connections int64     `json:"connections"`
 }
 
 // NetFlowEvent marks the first observation of a new flow (edge-triggered —
