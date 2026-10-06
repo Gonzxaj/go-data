@@ -114,3 +114,14 @@ func TestIPStorePrune(t *testing.T) {
 		t.Fatalf("after prune = %+v", got)
 	}
 }
+
+func TestInboundOnly(t *testing.T) {
+	raw := []rawFlow{
+		flow("181.1.2.3", 50000, "192.168.1.10", 25565, "tcp"),
+		flow("192.168.1.10", 40000, "198.41.200.13", 7844, "udp"), // cloudflared → Cloudflare edge
+	}
+	got := inboundOnly(resolveDirection(raw, testLocalNet(), nil, nil))
+	if len(got) != 1 || got[0].RemoteIP != "181.1.2.3" {
+		t.Fatalf("inboundOnly = %+v", got)
+	}
+}

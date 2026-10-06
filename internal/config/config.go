@@ -44,6 +44,7 @@ type Config struct {
 	NetMonIntervalSec   int  `json:"netmon_interval_sec,omitempty"`   // 0 = default (10)
 	NetMonForceFallback bool `json:"netmon_force_fallback"`           // force TCP-only proc/net/tcp visibility even if conntrack works (testing)
 	NetMonIPHistoryCap  int  `json:"netmon_ip_history_cap,omitempty"` // 0 = default (10000)
+	NetMonOutbound      bool `json:"netmon_outbound"`                 // also track connections this host initiates; default inbound only
 
 	// AuthMode picks how the dashboard is protected:
 	//   "none"    — open to anyone who can reach the port
@@ -94,6 +95,7 @@ func Load() Config {
 	cfg.NetMonIntervalSec = envInt("NETMON_INTERVAL_SEC", cfg.NetMonIntervalSec)
 	cfg.NetMonForceFallback = envBool("NETMON_FORCE_FALLBACK", cfg.NetMonForceFallback)
 	cfg.NetMonIPHistoryCap = envInt("NETMON_IP_HISTORY_CAP", cfg.NetMonIPHistoryCap)
+	cfg.NetMonOutbound = envBool("NETMON_OUTBOUND", cfg.NetMonOutbound)
 
 	cfg.AuthMode = strings.ToLower(strings.TrimSpace(envString("AUTH_MODE", cfg.AuthMode)))
 	cfg.AuthEnabled = envBool("AUTH_ENABLED", cfg.AuthEnabled)

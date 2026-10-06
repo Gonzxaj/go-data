@@ -33,6 +33,10 @@ type Config struct {
 	DataDir       string
 	ForceFallback bool
 	IPHistoryCap  int // 0 → default
+	// IncludeOutbound also tracks flows this host initiates (updates,
+	// DNS, cloudflared's own tunnel to Cloudflare, ...). Off by default:
+	// the point of netmon is who connects TO the server.
+	IncludeOutbound bool
 }
 
 type Monitor struct {
@@ -107,6 +111,9 @@ func (m *Monitor) poll() {
 	raw, capability := m.collect()
 	boundTCP, boundUDP := boundPorts(m.cfg.ProcPath)
 	flows := resolveDirection(raw, discoverLocalNet(), boundTCP, boundUDP)
+	if !m.cfg.IncludeOutbound {
+		flows = inboundOnly(flows)
+	}
 	now := time.Now()
 
 	active := make(map[string]bool, len(flows))
@@ -218,6 +225,17 @@ func resolveDirection(raw []rawFlow, ln localNet, boundTCP, boundUDP map[int]boo
 	return out
 }
 
+// inboundOnly filters flows in place down to the inbound ones.
+func inboundOnly(flows []domain.NetFlow) []domain.NetFlow {
+	out := flows[:0]
+	for _, f := range flows {
+		if f.Direction == "inbound" {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 func (m *Monitor) writeInflux(s domain.NetSample) {
 	if m.influx == nil {
 		return
@@ -252,6 +270,11 @@ func (m *Monitor) Capability() string {
 // process's own container (i.e. HostProcPath is a mounted host /proc).
 func (m *Monitor) HostWide() bool {
 	return m.cfg.ProcPath == "/hostproc"
+}
+
+// IncludesOutbound reports whether outbound flows are tracked at all.
+func (m *Monitor) IncludesOutbound() bool {
+	return m.cfg.IncludeOutbound
 }
 
 // SampleHistory returns the buffered NetSample series for /api/network/history.

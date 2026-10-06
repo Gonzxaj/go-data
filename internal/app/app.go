@@ -77,6 +77,8 @@ func Build(cfg config.Config) {
 			DataDir:       cfg.DataDir,
 			ForceFallback: cfg.NetMonForceFallback,
 			IPHistoryCap:  cfg.NetMonIPHistoryCap,
+
+			IncludeOutbound: cfg.NetMonOutbound,
 		}, pw)
 		interval := 10 * time.Second
 		if cfg.NetMonIntervalSec > 0 {

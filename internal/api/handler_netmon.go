@@ -16,6 +16,9 @@ type netSummaryResponse struct {
 	UniqueIPs   int    `json:"unique_ips"`
 	Inbound     int    `json:"inbound"`
 	Outbound    int    `json:"outbound"`
+	// OutboundEnabled is false when netmon only tracks inbound flows, in
+	// which case Outbound is always 0 and the dashboard hides it.
+	OutboundEnabled bool `json:"outbound_enabled"`
 }
 
 func (h *Handler) NetSummary(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +31,8 @@ func (h *Handler) NetSummary(w http.ResponseWriter, r *http.Request) {
 		Enabled:    true,
 		Capability: h.NetMon.Capability(),
 		HostWide:   h.NetMon.HostWide(),
+
+		OutboundEnabled: h.NetMon.IncludesOutbound(),
 	}
 	ips := map[string]bool{}
 	for _, f := range flows {

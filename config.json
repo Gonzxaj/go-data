@@ -20,5 +20,6 @@
   "netmon_enabled": true,
   "netmon_interval_sec": 10,
   "netmon_force_fallback": false,
-  "netmon_ip_history_cap": 10000
+  "netmon_ip_history_cap": 10000,
+  "netmon_outbound": false
 }

@@ -135,7 +135,7 @@
         <div class="metric"><p class="eyebrow">TCP</p><p class="metric-value" id="nm-tcp">—</p></div>
         <div class="metric"><p class="eyebrow">UDP</p><p class="metric-value" id="nm-udp">—</p></div>
         <div class="metric"><p class="eyebrow">Entrantes</p><p class="metric-value" id="nm-inbound">—</p></div>
-        <div class="metric"><p class="eyebrow">Salientes</p><p class="metric-value" id="nm-outbound">—</p></div>
+        <div class="metric" id="nm-outbound-card"><p class="eyebrow">Salientes</p><p class="metric-value" id="nm-outbound">—</p></div>
       </div>
       <div class="activity"><p class="eyebrow">Actividad reciente</p><div class="chart" id="chart-netmon"></div></div>
 
@@ -1179,6 +1179,7 @@ async function tickNetwork() {
       document.getElementById("nm-udp").textContent = String(summary.active_udp);
       document.getElementById("nm-inbound").textContent = String(summary.inbound);
       document.getElementById("nm-outbound").textContent = String(summary.outbound);
+      document.getElementById("nm-outbound-card").hidden = !summary.outbound_enabled;
     }
   } catch { /* keep last known values */ }
 
