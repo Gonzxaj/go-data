@@ -45,7 +45,14 @@ type Config struct {
 	NetMonForceFallback bool `json:"netmon_force_fallback"`           // force TCP-only proc/net/tcp visibility even if conntrack works (testing)
 	NetMonIPHistoryCap  int  `json:"netmon_ip_history_cap,omitempty"` // 0 = default (10000)
 
-	AuthEnabled  bool   `json:"auth_enabled"`
+	// AuthMode picks how the dashboard is protected:
+	//   "none"    — open to anyone who can reach the port
+	//   "basic"   — browser's HTTP Basic Auth popup, single AUTH_USER/AUTH_PASSWORD
+	//   "session" — login page with multiple accounts (admin/viewer), stored in DataDir/users.db;
+	//               AUTH_USER/AUTH_PASSWORD seed the first admin when there are no users yet
+	// When unset, the legacy AuthEnabled flag decides: true → "basic", false → "none".
+	AuthMode     string `json:"auth_mode,omitempty"`
+	AuthEnabled  bool   `json:"auth_enabled"` // deprecated: use AuthMode
 	AuthUser     string `json:"auth_user,omitempty"`
 	AuthPassword string `json:"auth_password,omitempty"`
 }
@@ -88,9 +95,16 @@ func Load() Config {
 	cfg.NetMonForceFallback = envBool("NETMON_FORCE_FALLBACK", cfg.NetMonForceFallback)
 	cfg.NetMonIPHistoryCap = envInt("NETMON_IP_HISTORY_CAP", cfg.NetMonIPHistoryCap)
 
+	cfg.AuthMode = strings.ToLower(strings.TrimSpace(envString("AUTH_MODE", cfg.AuthMode)))
 	cfg.AuthEnabled = envBool("AUTH_ENABLED", cfg.AuthEnabled)
 	cfg.AuthUser = envString("AUTH_USER", cfg.AuthUser)
 	cfg.AuthPassword = envString("AUTH_PASSWORD", cfg.AuthPassword)
+	if cfg.AuthMode == "" {
+		cfg.AuthMode = "none"
+		if cfg.AuthEnabled {
+			cfg.AuthMode = "basic"
+		}
+	}
 
 	if cfg.DataDir == "" {
 		cfg.DataDir = "./data"
