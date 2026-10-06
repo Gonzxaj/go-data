@@ -78,8 +78,8 @@ services:
       - DOCKER_ENABLED=true
       - SSH_WATCH_ENABLED=true
       - CONN_WATCH_ENABLED=true
-      - AUTH_ENABLED=true
-      - AUTH_USER=admin
+      - AUTH_MODE=session        # none | basic | session
+      - AUTH_USER=admin          # session: first admin, only used while there are no users yet
       - AUTH_PASSWORD=change-me
     depends_on:
       - influx
@@ -132,9 +132,32 @@ All settings can be set as environment variables (they override
 | `DATA_DIR` | Where local logs (reboot history, SSH/connection events) are stored. | `./data` |
 | `HOST_PROC_PATH` | `/proc` path used for connection watching, the CPU top-processes list, and partition detection. Auto-detects `/hostproc` if mounted. | auto |
 | `HOST_ROOT_PATH` | Bind mount of the host's real `/`, used to read actual usage for the partitions listed under each physical disk. Auto-detects `/hostfs` if mounted. Without it, disks still show but with no partitions. | auto |
-| `AUTH_ENABLED` | Require HTTP Basic Auth for the dashboard and API. Needs `AUTH_USER`/`AUTH_PASSWORD` set, or the app refuses to start. | `false` |
-| `AUTH_USER` | Basic Auth username. | — |
-| `AUTH_PASSWORD` | Basic Auth password. | — |
+| `AUTH_MODE` | How the dashboard is protected: `none` (open to anyone), `basic` (browser's classic HTTP Basic Auth popup, single user) or `session` (login page, multiple accounts with `admin`/`viewer` roles). | `none` |
+| `AUTH_USER` | `basic`: the username. `session`: username of the first admin, created on startup only if there are no users yet. | — |
+| `AUTH_PASSWORD` | `basic`: the password. `session`: password of that first admin (min. 8 chars). | — |
+| `AUTH_ENABLED` | Deprecated, kept for existing deployments: when `AUTH_MODE` is unset, `true` means `basic`. | `false` |
+
+### Login modes
+
+- **`none`** — no login at all. Only use it on a trusted network.
+- **`basic`** — the browser's built-in username/password popup, with the
+  single account from `AUTH_USER`/`AUTH_PASSWORD`. There's no logout.
+- **`session`** — a login page and user accounts stored in
+  `DATA_DIR/users.db` (SQLite, so keep `DATA_DIR` on a volume). On first
+  start, `AUTH_USER`/`AUTH_PASSWORD` create the first `admin`; after that,
+  changing them has no effect. Manage accounts from the **Usuarios** tab.
+  - `admin`: sees everything and can create, edit, deactivate or delete users.
+  - `viewer`: sees the whole dashboard but not the Usuarios tab.
+  - Passwords are hashed with bcrypt. Sessions last 7 days in an `HttpOnly`,
+    `SameSite=Strict` cookie. Logging out, deactivating or deleting a user,
+    or changing their password ends their sessions immediately.
+  - After 5 failed attempts from the same IP for the same username, logins
+    are blocked for 15 minutes.
+  - The last active admin can't be removed, demoted or deactivated, and
+    admins can't demote, deactivate or delete themselves.
+  - Put HTTPS in front (a reverse proxy) when exposing it to the internet.
+    The cookie is marked `Secure` automatically when the request arrives over
+    HTTPS (`X-Forwarded-Proto: https`).
 
 `SSH_WATCH_ENABLED` needs `/var/log` mounted read-only into the container.
 `CONN_WATCH_ENABLED` needs the host's `/proc` mounted read-only (as
@@ -146,8 +169,8 @@ partitions underneath.
 
 ## API
 
-All endpoints are `GET`, unauthenticated by default (unless `AUTH_ENABLED`
-is set), and return `application/json`. The dashboard is just a client of
+All endpoints return `application/json` and require login unless
+`AUTH_MODE=none`. With `session`, an unauthenticated request gets `401`. The dashboard is just a client of
 this same API.
 
 | Endpoint | Returns |
@@ -160,6 +183,19 @@ this same API.
 | `GET /api/uptime/sessions` | Reboot history, most recent first |
 | `GET /api/security/ssh` | SSH login attempts (needs `SSH_WATCH_ENABLED`) |
 | `GET /api/security/connections` | New inbound connections per watched port (needs `CONN_WATCH_ENABLED`) |
+| `GET /api/auth/me` | Active auth mode and current user (`{"mode":"session","user":{…}}`) |
+
+With `AUTH_MODE=session` there are also:
+
+| Endpoint | Who | Does |
+|---|---|---|
+| `POST /api/auth/login` | anyone | `{"username","password"}` → sets the session cookie |
+| `POST /api/auth/logout` | logged in | Ends the current session |
+| `PUT /api/auth/password` | logged in | `{"current_password","new_password"}` |
+| `GET /api/users` | admin | Lists accounts |
+| `POST /api/users` | admin | `{"username","password","role"}` → creates an account |
+| `PUT /api/users/{id}` | admin | Any of `{"role","active","password"}` |
+| `DELETE /api/users/{id}` | admin | Deletes an account |
 
 <details>
 <summary><b>Example: <code>GET /api/stats</code></b></summary>

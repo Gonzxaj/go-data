@@ -14,15 +14,20 @@
     *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);letter-spacing:0}button{font:inherit;letter-spacing:0}svg{display:block}.app{max-width:1440px;margin:auto;padding:20px 32px}.bar,.nav,.panel{border:1px solid var(--border);background:rgba(16,40,60,.72);box-shadow:var(--shadow);backdrop-filter:blur(8px)}.bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:var(--radius)}.brand,.right,.nav-btn,.title,.row{display:flex;align-items:center}.brand{gap:12px;min-width:0}.logo,.avatar,.title-icon{display:grid;place-items:center;background:rgba(92,189,185,.14);color:var(--primary);border:1px solid rgba(92,189,185,.22);border-radius:6px}.logo,.avatar{width:32px;height:32px;font-size:11px;font-weight:700}.brand-copy{min-width:0}.eyebrow{margin:0;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.16em}.brand-title{margin:2px 0 0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.accent{color:var(--primary)}.right{gap:10px}.status,.clock,.icon-button{border:1px solid var(--border);background:rgba(7,20,33,.62);border-radius:6px}.status{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12px}.dot{width:7px;height:7px;border-radius:50%;background:var(--primary);animation:pulse 2.4s infinite}.clock{padding:7px 9px;color:var(--muted);font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.icon-button{width:32px;height:32px;display:grid;place-items:center;color:var(--muted);cursor:pointer;position:relative}.icon-button:hover,.nav-btn:hover{color:var(--primary);border-color:rgba(92,189,185,.3)}.badge-dot{position:absolute;width:8px;height:8px;border-radius:50%;right:-2px;top:-2px;background:var(--primary);box-shadow:0 0 0 2px var(--bg)}.nav{margin-top:12px;padding:4px;border-radius:var(--radius);display:flex;gap:4px;overflow:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav-btn{gap:8px;border:1px solid transparent;background:transparent;color:var(--muted);padding:8px 12px;border-radius:6px;white-space:nowrap;cursor:pointer;font-size:13px}.nav-btn.active{color:var(--primary);border-color:rgba(92,189,185,.25);background:rgba(92,189,185,.1)}.icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.main{margin-top:12px}.view{display:none}.view.active{display:block}.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.panel{border-radius:var(--radius);padding:16px;min-width:0}.span2{grid-column:span 2}.span4{grid-column:span 4}.span6{grid-column:span 6}.uptime{grid-row:span 2;position:relative;overflow:hidden}.uptime:before{content:"";position:absolute;left:20%;right:20%;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--primary),transparent)}.between{display:flex;align-items:center;justify-content:space-between;gap:12px}.tag{display:inline-block;border:1px solid rgba(92,189,185,.18);background:rgba(92,189,185,.09);color:var(--primary);border-radius:4px;padding:3px 6px;font:10px ui-monospace,SFMono-Regular,Consolas,monospace;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.big{margin:18px 0 8px;font-size:38px;line-height:1;font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.note{margin:5px 0 0;color:var(--muted);font-size:11px}.spark{width:100%;height:64px;margin-top:16px;color:var(--primary)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--border);padding-top:12px}.stat-value{margin:0;font:14px ui-monospace,SFMono-Regular,Consolas,monospace}.stat-label{margin:3px 0 0;color:var(--muted);font-size:10px}.title{gap:8px}.title-icon{width:28px;height:28px}.title h2{font-size:14px;margin:0}.barline{height:6px;background:var(--bg);border-radius:99px;overflow:hidden;margin-top:16px}.fill{height:100%;border-radius:99px;background:var(--primary)}.fill.warning{background:var(--warning)}.resource-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:12px;gap:10px}.alert-list{display:grid;gap:8px;margin-top:12px}.alert{display:flex;align-items:center;gap:12px;border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:9px 12px;font-size:12px}.alert .label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.time{color:var(--muted);font:10px ui-monospace,SFMono-Regular,Consolas,monospace}.info-list{display:grid;gap:14px;margin:16px 0 0;padding:0;list-style:none}.info-list li{display:flex;justify-content:space-between;gap:12px;font-size:12px}.info-list span:first-child{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info-list span:last-child{flex:none;text-align:right}table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;margin-top:12px;text-align:left}th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;padding:8px 0;border-bottom:1px solid var(--border)}td{padding:9px 0;border-bottom:1px solid var(--border);vertical-align:middle}td:last-child,th:last-child{text-align:right}.table-wrap{overflow:auto}.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px}.metric,.container-card,.security-card,.connections{border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:14px;min-width:0}.metric-value{margin:12px 0 0;color:var(--primary);font:500 20px ui-monospace,SFMono-Regular,Consolas,monospace}.metric .note{min-height:32px}.activity{margin-top:24px}.chart{height:176px;border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:16px;margin-top:12px}.chart svg{width:100%;height:100%;color:var(--primary)}.containers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}.container-card h3{font-size:14px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.container-head{display:flex;align-items:center;gap:9px}.container-head .cc-restart{margin-left:auto}.miniboxes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.minibox{border:1px solid var(--border);background:rgba(16,40,60,.55);border-radius:4px;padding:9px}.minibox p:last-child{margin:5px 0 0;font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}.security-grid{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-top:20px}.security-card{border-color:rgba(92,189,185,.22);background:rgba(92,189,185,.07)}.security-card .icon{width:20px;height:20px;color:var(--primary)}.security-card h3{font-size:18px;margin:14px 0 0}.connections + .connections{margin-top:12px}.connection{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--border);font:12px ui-monospace,SFMono-Regular,Consolas,monospace}.connection:last-child{border-bottom:0}.connection span:first-child{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.connection span:last-child{flex:none;margin-left:12px}
     .spark-wrap{position:relative;width:100%;height:100%}.spark{cursor:crosshair}.spark-grid{stroke:var(--border);stroke-width:1;vector-effect:non-scaling-stroke}.spark-guide{stroke:rgba(215,225,232,.28);stroke-width:1;stroke-dasharray:2 2;vector-effect:non-scaling-stroke;display:none}.spark-dot{display:none;vector-effect:non-scaling-stroke}.spark-tip{position:absolute;top:2px;transform:translateX(-50%);background:rgba(4,10,18,.96);border:1px solid var(--border);padding:5px 9px;border-radius:6px;font:10.5px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;pointer-events:none;display:none;z-index:5}.spark-tip strong{color:var(--fg);font-weight:700}.spark-tip span{color:var(--muted);margin-left:6px}
     .disk-group{display:grid;gap:12px}.disk-card{border:1px solid var(--border);background:rgba(7,20,33,.35);border-radius:6px;padding:12px}.disk-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px}.disk-head .device{color:var(--fg);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.disk-head .cap{color:var(--muted);flex:none}.disk-partitions{display:grid;gap:10px;margin-top:10px}.partition{border-top:1px solid var(--border);padding-top:10px}.partition:first-child{border-top:0;padding-top:0}.partition-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px}.partition-mount{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.partition-meta{color:var(--muted);font-size:11px;flex:none}.partition-usage{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:11px;margin-top:6px}.partition .barline{margin-top:6px}
+    [hidden]{display:none!important}.user-chip{display:flex;align-items:center;gap:8px;min-width:0}.user-copy{display:grid;line-height:1.2;min-width:0}.user-copy span:first-child{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}.user-copy span:last-child{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em}
+    .field{font:inherit;font-size:12px;color:var(--fg);background:rgba(7,20,33,.62);border:1px solid var(--border);border-radius:6px;padding:8px 10px;outline:none;min-width:0}.field:focus{border-color:var(--primary)}.btn{font:inherit;font-size:12px;color:var(--fg);background:rgba(7,20,33,.62);border:1px solid var(--border);border-radius:6px;padding:7px 11px;cursor:pointer;white-space:nowrap}.btn:hover:not(:disabled){color:var(--primary);border-color:rgba(92,189,185,.3)}.btn:disabled{opacity:.45;cursor:default}.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--bg);font-weight:600}.btn.primary:hover:not(:disabled){color:var(--bg)}.btn.danger:hover:not(:disabled){color:var(--crit);border-color:rgba(226,102,92,.4)}.btn.danger-solid{background:var(--crit);border-color:var(--crit);color:var(--bg);font-weight:600}.btn.danger-solid:hover:not(:disabled){color:var(--bg);filter:brightness(1.08)}
+    .users-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.role-edit{display:inline-flex;gap:6px;align-items:center}.form-msg{min-height:16px;margin:10px 0 0;font-size:12px;color:var(--muted)}.form-msg.err{color:var(--crit)}.form-msg.ok{color:var(--primary)}.users-actions{display:inline-flex;gap:6px}.state{font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.state.on{color:var(--primary)}.state.off{color:var(--muted)}
+    dialog{border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;width:min(360px,calc(100vw - 32px))}dialog::backdrop{background:rgba(2,8,14,.7)}dialog h3{margin:0 0 4px;font-size:14px}dialog label{display:block;color:var(--muted);font-size:11px;margin:12px 0 6px}dialog .field{width:100%}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+    .pw-wrap{position:relative;display:block}.pw-wrap input{padding-right:38px}.pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:30px;height:30px;margin:0;padding:0;display:grid;place-items:center;background:none;border:0;border-radius:4px;color:var(--muted);cursor:pointer}.pw-toggle:hover,.pw-toggle:focus-visible{color:var(--primary)}.pw-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     @keyframes pulse{50%{opacity:.35}}
     @media(max-width:900px){.app{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.span2,.span4{grid-column:span 1}.span6{grid-column:span 2}.metrics{grid-template-columns:repeat(2,1fr)}.containers{grid-template-columns:repeat(2,1fr)}.security-grid{grid-template-columns:1fr}.status{display:none}}
-    @media(max-width:600px){.app{padding:12px}.clock{display:none}.grid{grid-template-columns:1fr}.span2,.span4,.span6{grid-column:span 1}.metrics,.containers{grid-template-columns:1fr}.bar{padding:11px 12px}.big{font-size:34px}}
+    @media(max-width:600px){.app{padding:12px}.clock{display:none}.grid{grid-template-columns:1fr}.span2,.span4,.span6{grid-column:span 1}.metrics,.containers{grid-template-columns:1fr}.bar{padding:11px 12px}.big{font-size:34px}.user-copy{display:none}}
     @media(prefers-reduced-motion:reduce){.dot{animation:none}}
   </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute"><defs>
-  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol><symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol><symbol id="i-memory" viewBox="0 0 24 24"><path d="M6 19v-3M10 19v-3M14 19v-3M18 19v-3M8 11V9M16 11V9M12 11V9M2 15h20M2 4h20v12H2z"/></symbol><symbol id="i-disk" viewBox="0 0 24 24"><path d="M12 2v8M18.4 6.6a9 9 0 1 1-12.8 0"/><circle cx="12" cy="12" r="2"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.3 7 12 12l8.7-5M12 22V12"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.3 21h3.4M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></symbol><symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol><symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol><symbol id="i-memory" viewBox="0 0 24 24"><path d="M6 19v-3M10 19v-3M14 19v-3M18 19v-3M8 11V9M16 11V9M12 11V9M2 15h20M2 4h20v12H2z"/></symbol><symbol id="i-disk" viewBox="0 0 24 24"><path d="M12 2v8M18.4 6.6a9 9 0 1 1-12.8 0"/><circle cx="12" cy="12" r="2"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></symbol><symbol id="i-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.3 7 12 12l8.7-5M12 22V12"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.3 21h3.4M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></symbol><symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></symbol><symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
 </defs></svg>
 <div class="app">
   <header class="bar">
@@ -37,10 +42,16 @@
       <div class="status"><span class="dot" id="dot"></span><span id="status">conectando…</span></div>
       <button class="icon-button" id="alert-bell" aria-label="Ver alertas" title="sin alertas activas"><svg class="icon"><use href="#i-bell"/></svg><span class="badge-dot" id="alert-badge" hidden></span></button>
       <div class="clock" id="clock">--:--:-- ART</div>
+      <div class="user-chip" id="user-chip" hidden>
+        <span class="avatar" id="user-avatar"></span>
+        <div class="user-copy"><span id="user-name"></span><span id="user-role"></span></div>
+      </div>
+      <button class="icon-button" id="btn-password" aria-label="Cambiar contraseña" title="Cambiar contraseña" hidden><svg class="icon"><use href="#i-key"/></svg></button>
+      <button class="icon-button" id="btn-logout" aria-label="Cerrar sesión" title="Cerrar sesión" hidden><svg class="icon"><use href="#i-logout"/></svg></button>
     </div>
   </header>
   <nav class="nav" aria-label="Secciones del servidor">
-    <button class="nav-btn active" data-view="General"><svg class="icon"><use href="#i-activity"/></svg>General</button><button class="nav-btn" data-view="CPU"><svg class="icon"><use href="#i-cpu"/></svg>CPU</button><button class="nav-btn" data-view="Memoria"><svg class="icon"><use href="#i-memory"/></svg>Memoria</button><button class="nav-btn" data-view="Disco"><svg class="icon"><use href="#i-disk"/></svg>Disco</button><button class="nav-btn" data-view="Red"><svg class="icon"><use href="#i-wifi"/></svg>Red</button><button class="nav-btn" data-view="Contenedores"><svg class="icon"><use href="#i-box"/></svg>Contenedores</button><button class="nav-btn" data-view="Seguridad"><svg class="icon"><use href="#i-shield"/></svg>Seguridad</button>
+    <button class="nav-btn active" data-view="General"><svg class="icon"><use href="#i-activity"/></svg>General</button><button class="nav-btn" data-view="CPU"><svg class="icon"><use href="#i-cpu"/></svg>CPU</button><button class="nav-btn" data-view="Memoria"><svg class="icon"><use href="#i-memory"/></svg>Memoria</button><button class="nav-btn" data-view="Disco"><svg class="icon"><use href="#i-disk"/></svg>Disco</button><button class="nav-btn" data-view="Red"><svg class="icon"><use href="#i-wifi"/></svg>Red</button><button class="nav-btn" data-view="Contenedores"><svg class="icon"><use href="#i-box"/></svg>Contenedores</button><button class="nav-btn" data-view="Seguridad"><svg class="icon"><use href="#i-shield"/></svg>Seguridad</button><button class="nav-btn" data-view="Usuarios" id="nav-users" hidden><svg class="icon"><use href="#i-users"/></svg>Usuarios</button>
   </nav>
   <main class="main">
 
@@ -142,8 +153,51 @@
       </div>
     </article></section>
 
+    <section class="view" id="view-Usuarios"><article class="panel">
+      <div class="users-head">
+        <div>
+          <div class="title"><span class="title-icon"><svg class="icon"><use href="#i-users"/></svg></span><h2>Usuarios</h2></div>
+          <p class="note">Cuentas con acceso al panel. Los <strong>admin</strong> gestionan usuarios; los <strong>viewer</strong> solo ven las métricas.</p>
+        </div>
+        <button class="btn primary" type="button" id="btn-new-user">+ Nuevo usuario</button>
+      </div>
+      <p class="form-msg" id="users-msg" role="status"></p>
+      <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead><tbody id="users-body"></tbody></table></div>
+    </article></section>
+
   </main>
 </div>
+<dialog id="create-dialog">
+  <form id="create-form" method="dialog" autocomplete="off">
+    <h3>Nuevo usuario</h3>
+    <p class="note">Podrá entrar al panel con estas credenciales.</p>
+    <label for="create-username">Usuario</label><input class="field" id="create-username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9._\-]+" title="3 a 32 caracteres: letras, números, . _ -">
+    <label for="create-password">Contraseña</label><input class="field" id="create-password" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <label for="create-confirm">Repetir contraseña</label><input class="field" id="create-confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <label for="create-role">Rol</label><select class="field" id="create-role"><option value="viewer">viewer — solo ve métricas</option><option value="admin">admin — gestiona usuarios</option></select>
+    <p class="form-msg err" id="create-msg" role="alert"></p>
+    <div class="dialog-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Crear usuario</button></div>
+  </form>
+</dialog>
+<dialog id="delete-dialog">
+  <form id="delete-form" method="dialog">
+    <h3>Eliminar usuario</h3>
+    <p class="note" id="delete-note"></p>
+    <p class="form-msg err" id="delete-msg" role="alert"></p>
+    <div class="dialog-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn danger-solid" type="submit">Eliminar</button></div>
+  </form>
+</dialog>
+<dialog id="pw-dialog">
+  <form id="pw-form" method="dialog">
+    <h3 id="pw-title">Cambiar contraseña</h3>
+    <p class="note" id="pw-note"></p>
+    <div id="pw-current-wrap"><label for="pw-current">Contraseña actual</label><input class="field" id="pw-current" type="password" autocomplete="current-password"></div>
+    <label for="pw-new">Nueva contraseña</label><input class="field" id="pw-new" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <label for="pw-confirm">Repetir contraseña</label><input class="field" id="pw-confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <p class="form-msg err" id="pw-msg" role="alert"></p>
+    <div class="dialog-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
+  </form>
+</dialog>
 <script>
 const HISTORY_POINTS = 60;
 const REFRESH_MS = 2000;
@@ -212,6 +266,7 @@ function fmtEventTime(iso) {
 
 async function fetchJSON(path) {
   const res = await fetch(path);
+  if (res.status === 401 && authMode === "session") location.replace("/login.html");
   if (!res.ok) throw new Error(res.status);
   return res.json();
 }
@@ -1063,6 +1118,268 @@ async function tickConnections() {
   }
 }
 
+// ---------- sesión y usuarios (solo AUTH_MODE=session) ----------
+// Igual que el resto del panel: los datos (usernames) se insertan con
+// textContent, nunca con innerHTML.
+
+let authMode = null;
+let currentUser = null;
+
+async function sendJSON(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 401 && authMode === "session" && path !== "/api/auth/password") location.replace("/login.html");
+  if (res.ok) return res.status === 204 ? null : res.json();
+  const json = await res.json().catch(() => ({}));
+  throw new Error(json.error || `error ${res.status}`);
+}
+
+async function initAuth() {
+  try {
+    const me = await fetchJSON("/api/auth/me");
+    authMode = me.mode;
+    currentUser = me.user || null;
+  } catch {
+    return;
+  }
+  if (!currentUser) return;
+  document.getElementById("user-chip").hidden = false;
+  document.getElementById("user-avatar").textContent = currentUser.username.slice(0, 2).toUpperCase();
+  document.getElementById("user-name").textContent = currentUser.username;
+  document.getElementById("user-role").textContent = authMode === "session" ? currentUser.role : "basic auth";
+  if (authMode !== "session") return;
+  document.getElementById("btn-password").hidden = false;
+  document.getElementById("btn-logout").hidden = false;
+  document.getElementById("nav-users").hidden = currentUser.role !== "admin";
+}
+
+document.getElementById("btn-logout").addEventListener("click", async () => {
+  try { await sendJSON("POST", "/api/auth/logout"); } catch {}
+  location.replace("/login.html");
+});
+
+function setUsersMsg(text, kind = "") {
+  const el = document.getElementById("users-msg");
+  el.textContent = text;
+  el.className = `form-msg ${kind}`;
+}
+
+function button(label, onClick, { danger = false, disabled = false } = {}) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = danger ? "btn danger" : "btn";
+  b.textContent = label;
+  b.disabled = disabled;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+async function updateUser(u, patch, okMsg) {
+  try {
+    await sendJSON("PUT", `/api/users/${u.id}`, patch);
+    setUsersMsg(okMsg, "ok");
+  } catch (e) {
+    setUsersMsg(e.message, "err");
+  }
+  loadUsers();
+}
+
+function renderUsers(list) {
+  const body = document.getElementById("users-body");
+  body.replaceChildren();
+  for (const u of list) {
+    const self = currentUser && u.id === currentUser.id;
+    const tr = document.createElement("tr");
+
+    const tdName = document.createElement("td");
+    tdName.textContent = u.username;
+    if (self) {
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.style.marginLeft = "8px";
+      tag.textContent = "vos";
+      tdName.appendChild(tag);
+    }
+
+    // El rol se elige en el select y se aplica recién con "Guardar".
+    const tdRole = document.createElement("td");
+    const roleEdit = document.createElement("span");
+    roleEdit.className = "role-edit";
+    const sel = document.createElement("select");
+    sel.className = "field";
+    sel.setAttribute("aria-label", `Rol de ${u.username}`);
+    for (const r of ["viewer", "admin"]) sel.add(new Option(r, r, false, r === u.role));
+    sel.disabled = self;
+    const save = button("Guardar", () => updateUser(u, { role: sel.value }, `${u.username} ahora es ${sel.value}`), { disabled: true });
+    save.classList.add("primary");
+    save.hidden = self;
+    sel.addEventListener("change", () => { save.disabled = sel.value === u.role; });
+    roleEdit.append(sel, save);
+    tdRole.appendChild(roleEdit);
+
+    const tdState = document.createElement("td");
+    const state = document.createElement("span");
+    state.className = `state ${u.active ? "on" : "off"}`;
+    state.textContent = u.active ? "● activo" : "○ inactivo";
+    tdState.appendChild(state);
+
+    const tdCreated = document.createElement("td");
+    tdCreated.className = "time";
+    tdCreated.textContent = new Date(u.created_at).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const tdActions = document.createElement("td");
+    const actions = document.createElement("span");
+    actions.className = "users-actions";
+    actions.append(
+      button(u.active ? "Desactivar" : "Activar", () => updateUser(u, { active: !u.active }, `${u.username} ${u.active ? "desactivado" : "activado"}`), { disabled: self }),
+      button("Cambiar contraseña", () => openPasswordDialog(u)),
+      button("Eliminar", () => openDeleteDialog(u), { danger: true, disabled: self }),
+    );
+    tdActions.appendChild(actions);
+
+    tr.append(tdName, tdRole, tdState, tdCreated, tdActions);
+    body.appendChild(tr);
+  }
+}
+
+async function loadUsers() {
+  if (authMode !== "session" || currentUser?.role !== "admin") return;
+  try {
+    renderUsers(await fetchJSON("/api/users"));
+  } catch {
+    setUsersMsg("no se pudo cargar la lista de usuarios", "err");
+  }
+}
+
+// Todos los modales cierran con su botón "Cancelar" (data-close) o con Esc.
+document.querySelectorAll("dialog [data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
+
+const createDialog = document.getElementById("create-dialog");
+
+document.getElementById("btn-new-user").addEventListener("click", () => {
+  document.getElementById("create-form").reset();
+  document.getElementById("create-msg").textContent = "";
+  createDialog.showModal();
+});
+
+document.getElementById("create-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("create-msg");
+  const password = document.getElementById("create-password").value;
+  if (password !== document.getElementById("create-confirm").value) {
+    msg.textContent = "las contraseñas no coinciden";
+    return;
+  }
+  try {
+    const u = await sendJSON("POST", "/api/users", {
+      username: document.getElementById("create-username").value.trim(),
+      password,
+      role: document.getElementById("create-role").value,
+    });
+    createDialog.close();
+    setUsersMsg(`usuario ${u.username} creado`, "ok");
+    loadUsers();
+  } catch (err) {
+    msg.textContent = err.message;
+  }
+});
+
+const deleteDialog = document.getElementById("delete-dialog");
+let deleteTarget = null;
+
+function openDeleteDialog(user) {
+  deleteTarget = user;
+  document.getElementById("delete-note").textContent = `¿Eliminar al usuario "${user.username}"? Se cerrarán sus sesiones y esta acción no se puede deshacer.`;
+  document.getElementById("delete-msg").textContent = "";
+  deleteDialog.showModal();
+}
+
+document.getElementById("delete-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await sendJSON("DELETE", `/api/users/${deleteTarget.id}`);
+    deleteDialog.close();
+    setUsersMsg(`${deleteTarget.username} eliminado`, "ok");
+    loadUsers();
+  } catch (err) {
+    document.getElementById("delete-msg").textContent = err.message;
+  }
+});
+
+// Diálogo compartido: sin argumento cambia la propia contraseña (pide la
+// actual); con un usuario, es el reseteo que hace un admin.
+const pwDialog = document.getElementById("pw-dialog");
+let pwTarget = null;
+
+function openPasswordDialog(user = null) {
+  pwTarget = user;
+  const self = !user;
+  document.getElementById("pw-title").textContent = self ? "Cambiar mi contraseña" : "Cambiar contraseña";
+  document.getElementById("pw-note").textContent = self ? "Se cerrarán tus otras sesiones abiertas." : `Usuario: ${user.username}. Se cerrarán sus sesiones abiertas.`;
+  document.getElementById("pw-current-wrap").hidden = !self;
+  document.getElementById("pw-current").required = self;
+  document.getElementById("pw-form").reset();
+  document.getElementById("pw-msg").textContent = "";
+  pwDialog.showModal();
+}
+
+document.getElementById("btn-password").addEventListener("click", () => openPasswordDialog());
+document.getElementById("pw-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("pw-msg");
+  const next = document.getElementById("pw-new").value;
+  if (next !== document.getElementById("pw-confirm").value) {
+    msg.textContent = "las contraseñas no coinciden";
+    return;
+  }
+  try {
+    if (pwTarget) {
+      await sendJSON("PUT", `/api/users/${pwTarget.id}`, { password: next });
+      setUsersMsg(`contraseña de ${pwTarget.username} actualizada`, "ok");
+    } else {
+      await sendJSON("PUT", "/api/auth/password", { current_password: document.getElementById("pw-current").value, new_password: next });
+    }
+    pwDialog.close();
+  } catch (err) {
+    msg.textContent = err.message;
+  }
+});
+
+// Ojito para ver/ocultar la contraseña en cada input[type=password].
+function addPasswordToggles(root = document) {
+  root.querySelectorAll('input[type="password"]').forEach((input) => {
+    const dialog = input.closest("dialog");
+    const wrap = document.createElement("span");
+    wrap.className = "pw-wrap";
+    input.replaceWith(wrap);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pw-toggle";
+    const sync = () => {
+      const shown = input.type === "text";
+      btn.setAttribute("aria-label", shown ? "Ocultar contraseña" : "Mostrar contraseña");
+      btn.setAttribute("aria-pressed", String(shown));
+      btn.title = btn.getAttribute("aria-label");
+      btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${shown ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22"/>' : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'}</svg>`;
+    };
+    btn.addEventListener("click", () => {
+      input.type = input.type === "password" ? "text" : "password";
+      sync();
+      input.focus();
+    });
+    // Al cerrar un modal la contraseña vuelve a quedar oculta.
+    dialog?.addEventListener("close", () => { input.type = "password"; sync(); });
+    sync();
+    wrap.append(input, btn);
+  });
+}
+addPasswordToggles();
+
+initAuth();
+
 // ---------- tabs ----------
 
 document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -1071,6 +1388,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
     document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("active", b === btn));
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${name}`));
     document.getElementById("section-name").textContent = name;
+    if (name === "Usuarios") loadUsers();
   });
 });
 
