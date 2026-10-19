@@ -1,0 +1,7 @@
+{{ define "nav" }}
+<nav class="nav" aria-label="Secciones del servidor">
+  {{ range $i, $s := .Sections -}}
+  <button class="nav-btn{{ if eq $i 0 }} active{{ end }}" data-view="{{ .Name }}"{{ if .AdminOnly }} id="nav-users" hidden{{ end }}>{{ template "icon" .Icon }}{{ .Name }}</button>
+  {{- end }}
+</nav>
+{{ end }}

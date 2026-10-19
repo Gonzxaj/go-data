@@ -1,0 +1,33 @@
+{{ define "view-connections" }}
+<section class="view" id="view-Conexiones"><article class="panel">
+  <div class="between">
+    {{ template "panel-title" (dict "Icon" "link" "Title" "Conexiones") }}
+    <span class="tag" id="netmon-capability" hidden></span>
+  </div>
+  <p class="note">Conexiones de red del servidor completo (TCP y UDP, cualquier puerto), independientemente del servicio que las atienda</p>
+  <div class="metrics" id="netmon-summary" style="margin-top:16px">
+    <div class="metric"><p class="eyebrow">Activas</p><p class="metric-value" id="nm-active">—</p></div>
+    <div class="metric"><p class="eyebrow">IPs únicas</p><p class="metric-value" id="nm-unique">—</p></div>
+    <div class="metric"><p class="eyebrow">TCP</p><p class="metric-value" id="nm-tcp">—</p></div>
+    <div class="metric"><p class="eyebrow">UDP</p><p class="metric-value" id="nm-udp">—</p></div>
+    <div class="metric"><p class="eyebrow">Entrantes</p><p class="metric-value" id="nm-inbound">—</p></div>
+    <div class="metric" id="nm-outbound-card"><p class="eyebrow">Salientes</p><p class="metric-value" id="nm-outbound">—</p></div>
+  </div>
+  <div class="activity"><p class="eyebrow">Actividad reciente</p><div class="chart" id="chart-netmon"></div></div>
+
+  <p class="eyebrow" style="margin-top:24px">Principales IPs y puertos</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+    <div class="container-card"><p class="eyebrow">Top IPs</p><ul class="info-list" id="netmon-top-ips"></ul></div>
+    <div class="container-card"><p class="eyebrow">Top puertos</p><ul class="info-list" id="netmon-top-ports"></ul></div>
+  </div>
+
+  <p class="eyebrow" style="margin-top:24px">Conexiones activas</p>
+  <div class="table-wrap"><table><thead><tr><th>IP</th><th>Protocolo</th><th>Puerto</th><th>Dirección</th><th>Estado</th></tr></thead><tbody id="netmon-connections-body"></tbody></table></div>
+
+  <p class="eyebrow" style="margin-top:24px">Últimas conexiones detectadas</p>
+  <div id="netmon-events-list" style="margin-top:4px;max-height:220px;overflow-y:auto"></div>
+
+  <p class="eyebrow" style="margin-top:24px">Historial de IPs</p>
+  <ul class="info-list" id="netmon-ip-history" style="max-height:220px;overflow-y:auto"></ul>
+</article></section>
+{{ end }}

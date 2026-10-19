@@ -1,0 +1,17 @@
+{{ define "view-security" }}
+<section class="view" id="view-Seguridad"><article class="panel">
+  {{ template "panel-title" (dict "Icon" "shield" "Title" "Seguridad") }}
+  <p class="note">Intentos de acceso por SSH y conexiones entrantes a puertos vigilados (ej. servidores de juego)</p>
+  <div class="security-grid">
+    <div class="security-card">
+      <svg class="icon" id="ssh-status-icon"><use href="#i-check"/></svg>
+      <h3 id="ssh-status-title">—</h3>
+      <p class="note" id="ssh-status-note">—</p>
+    </div>
+    <div>
+      <div class="connections"><p class="eyebrow">Intentos de SSH</p><div id="ssh-list" style="margin-top:4px;max-height:220px;overflow-y:auto"></div></div>
+      <div class="connections"><p class="eyebrow">Conexiones entrantes vigiladas</p><div id="conn-list" style="margin-top:4px;max-height:220px;overflow-y:auto"></div></div>
+    </div>
+  </div>
+</article></section>
+{{ end }}

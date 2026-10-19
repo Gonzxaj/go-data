@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+  {{ template "head" . }}
+</head>
+<body>
+{{ template "icons" }}
+<div class="app">
+  {{ template "header" . }}
+  {{ template "nav" . }}
+  <main class="main">
+    {{ template "view-general" . }}
+    {{ range .Sections }}{{ if .Key }}{{ template "view-resource" . }}{{ end }}{{ end }}
+    {{ template "view-connections" . }}
+    {{ template "view-containers" . }}
+    {{ template "view-security" . }}
+    {{ template "view-users" . }}
+  </main>
+</div>
+{{ template "dialog-create-user" }}
+{{ template "dialog-delete-user" }}
+{{ template "dialog-password" }}
+{{ template "scripts" }}
+</body>
+</html>

@@ -1,0 +1,15 @@
+{{ define "view-containers" }}
+<section class="view" id="view-Contenedores"><article class="panel">
+  <div class="between">
+    <div>{{ template "panel-title" (dict "Icon" "box" "Title" "Contenedores") }}<p class="note">estado, puertos, imagen y tamaño vía la API de este servidor</p></div>
+    <span class="tag" id="docker-count">—</span>
+  </div>
+  <p class="eyebrow" style="margin-top:24px">Sockets y puertos del host</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+    <div class="container-card"><p class="eyebrow">Sockets</p><ul class="info-list" id="sockets-list"></ul></div>
+    <div class="container-card"><p class="eyebrow">Puertos publicados</p><ul class="info-list" id="published-ports-list" style="max-height:220px;overflow-y:auto"></ul></div>
+  </div>
+  <p class="eyebrow" style="margin-top:24px">Contenedores</p>
+  <div class="containers" id="grid-docker"></div>
+</article></section>
+{{ end }}

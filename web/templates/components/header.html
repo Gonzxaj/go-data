@@ -1,0 +1,22 @@
+{{ define "header" }}
+<header class="bar">
+  <div class="brand">
+    <div class="logo">GD</div>
+    <div class="brand-copy">
+      <p class="eyebrow">GO-DATA · Consola</p>
+      <p class="brand-title"><span id="section-name">General</span> <span style="color:var(--muted)">/</span> <span class="accent" id="hostname">{{ or .Hostname "servidor" }}</span></p>
+    </div>
+  </div>
+  <div class="right">
+    <div class="status"><span class="dot" id="dot"></span><span id="status">conectando…</span></div>
+    <button class="icon-button" id="alert-bell" aria-label="Ver alertas" title="sin alertas activas">{{ template "icon" "bell" }}<span class="badge-dot" id="alert-badge" hidden></span></button>
+    <div class="clock" id="clock">--:--:-- ART</div>
+    <div class="user-chip" id="user-chip" hidden>
+      <span class="avatar" id="user-avatar"></span>
+      <div class="user-copy"><span id="user-name"></span><span id="user-role"></span></div>
+    </div>
+    <button class="icon-button" id="btn-password" aria-label="Cambiar contraseña" title="Cambiar contraseña" hidden>{{ template "icon" "key" }}</button>
+    <button class="icon-button" id="btn-logout" aria-label="Cerrar sesión" title="Cerrar sesión" hidden>{{ template "icon" "logout" }}</button>
+  </div>
+</header>
+{{ end }}

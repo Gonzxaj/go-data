@@ -1,0 +1,14 @@
+{{/* Scripts clásicos que comparten el scope global: el orden importa,
+     y main.js va último porque arranca el loop una vez definido todo. */}}
+{{ define "scripts" }}
+<script src="/js/helpers.js"></script>
+<script src="/js/sparklines.js"></script>
+<script src="/js/metrics.js"></script>
+<script src="/js/general.js"></script>
+<script src="/js/containers.js"></script>
+<script src="/js/security.js"></script>
+<script src="/js/connections.js"></script>
+<script src="/js/password-toggle.js"></script>
+<script src="/js/users.js"></script>
+<script src="/js/main.js"></script>
+{{ end }}

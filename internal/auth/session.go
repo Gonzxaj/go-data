@@ -62,11 +62,14 @@ func CurrentSession(r *http.Request) string {
 	return c.tokenHash
 }
 
-// publicPaths are reachable without a session: the login page itself and the
-// endpoint it posts to.
+// publicPaths are reachable without a session: the login page, its assets
+// and the endpoint it posts to.
 var publicPaths = map[string]bool{
-	"/login.html":     true,
-	"/api/auth/login": true,
+	"/login.html":            true,
+	"/css/login.css":         true,
+	"/js/login.js":           true,
+	"/js/password-toggle.js": true,
+	"/api/auth/login":        true,
 }
 
 // Middleware requires a valid session for everything except publicPaths.

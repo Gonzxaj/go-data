@@ -1,0 +1,7 @@
+{{/* Piezas chicas reutilizadas por las vistas. */}}
+
+{{/* "icon": un símbolo del sprite de icons.html. Uso: {{ template "icon" "cpu" }} */}}
+{{ define "icon" }}<svg class="icon"><use href="#i-{{ . }}"/></svg>{{ end }}
+
+{{/* "panel-title": ícono + h2 de cada panel. Uso: {{ template "panel-title" (dict "Icon" "cpu" "Title" "CPU") }} */}}
+{{ define "panel-title" }}<div class="title"><span class="title-icon">{{ template "icon" .Icon }}</span><h2>{{ .Title }}</h2></div>{{ end }}

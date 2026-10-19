@@ -1,0 +1,10 @@
+{{ define "dialog-delete-user" }}
+<dialog id="delete-dialog">
+  <form id="delete-form" method="dialog">
+    <h3>Eliminar usuario</h3>
+    <p class="note" id="delete-note"></p>
+    <p class="form-msg err" id="delete-msg" role="alert"></p>
+    <div class="dialog-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn danger-solid" type="submit">Eliminar</button></div>
+  </form>
+</dialog>
+{{ end }}

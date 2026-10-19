@@ -1,0 +1,14 @@
+{{ define "login-form" }}
+<form class="card" id="form">
+  <div class="brand">
+    <div class="logo">GD</div>
+    <div><p class="eyebrow">GO-DATA · Consola</p><h1>Iniciar sesión</h1></div>
+  </div>
+  <label for="username">Usuario</label>
+  <input id="username" name="username" autocomplete="username" required autofocus>
+  <label for="password">Contraseña</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" required>
+  <p class="error" id="error" role="alert"></p>
+  <button type="submit" id="submit">Entrar</button>
+</form>
+{{ end }}

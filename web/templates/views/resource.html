@@ -1,0 +1,13 @@
+{{/* Vista simple de un recurso (métricas + gráfico). Se usa para cada
+     sección con Key en web.Sections: CPU, Memoria, Disco, Red. */}}
+{{ define "view-resource" }}
+<section class="view" id="view-{{ .Name }}"><article class="panel">
+  {{ template "panel-title" (dict "Icon" .Icon "Title" .Name) }}
+  <div class="metrics" id="metrics-{{ .Key }}"></div>
+  <div class="activity"><p class="eyebrow">Actividad reciente</p><div class="chart" id="chart-{{ .Key }}"></div></div>
+  {{- if eq .Key "cpu" }}
+  <p class="eyebrow" style="margin-top:24px">Top procesos por CPU</p>
+  <ul class="info-list" id="cpu-procs"></ul>
+  {{- end }}
+</article></section>
+{{ end }}

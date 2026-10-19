@@ -1,0 +1,13 @@
+{{ define "view-users" }}
+<section class="view" id="view-Usuarios"><article class="panel">
+  <div class="users-head">
+    <div>
+      {{ template "panel-title" (dict "Icon" "users" "Title" "Usuarios") }}
+      <p class="note">Cuentas con acceso al panel. Los <strong>admin</strong> gestionan usuarios; los <strong>viewer</strong> solo ven las métricas.</p>
+    </div>
+    <button class="btn primary" type="button" id="btn-new-user">+ Nuevo usuario</button>
+  </div>
+  <p class="form-msg" id="users-msg" role="status"></p>
+  <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead><tbody id="users-body"></tbody></table></div>
+</article></section>
+{{ end }}

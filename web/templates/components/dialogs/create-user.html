@@ -1,0 +1,14 @@
+{{ define "dialog-create-user" }}
+<dialog id="create-dialog">
+  <form id="create-form" method="dialog" autocomplete="off">
+    <h3>Nuevo usuario</h3>
+    <p class="note">Podrá entrar al panel con estas credenciales.</p>
+    <label for="create-username">Usuario</label><input class="field" id="create-username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9._\-]+" title="3 a 32 caracteres: letras, números, . _ -">
+    <label for="create-password">Contraseña</label><input class="field" id="create-password" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <label for="create-confirm">Repetir contraseña</label><input class="field" id="create-confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+    <label for="create-role">Rol</label><select class="field" id="create-role"><option value="viewer">viewer — solo ve métricas</option><option value="admin">admin — gestiona usuarios</option></select>
+    <p class="form-msg err" id="create-msg" role="alert"></p>
+    <div class="dialog-actions"><button class="btn" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Crear usuario</button></div>
+  </form>
+</dialog>
+{{ end }}

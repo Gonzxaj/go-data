@@ -1,0 +1,45 @@
+{{ define "view-general" }}
+<section class="view active" id="view-General"><div class="grid">
+  <article class="panel span2 uptime">
+    <div class="between"><p class="eyebrow">Tiempo activo</p><span class="tag" id="uptime-tag">—</span></div>
+    <p class="big" id="uptime-value">—</p>
+    <p class="note mono" id="uptime-sub">—</p>
+    <div class="stats">
+      <div><p class="stat-value" id="stat-restarts">—</p><p class="stat-label">Reinicios</p></div>
+      <div><p class="stat-value" id="stat-avg">—</p><p class="stat-label">Promedio</p></div>
+      <div><p class="stat-value" id="stat-record">—</p><p class="stat-label">Récord</p></div>
+    </div>
+  </article>
+  <article class="panel span2">
+    <div class="between">{{ template "panel-title" (dict "Icon" "cpu" "Title" "Procesador") }}<span class="mono accent" id="gen-cpu-value">—</span></div>
+    <div class="barline"><div class="fill" id="gen-cpu-fill" style="width:0%"></div></div>
+    <div class="resource-meta"><span id="gen-cpu-detail">—</span><span id="gen-cpu-temp">—</span></div>
+  </article>
+  <article class="panel span2">
+    <div class="between">{{ template "panel-title" (dict "Icon" "memory" "Title" "Memoria RAM") }}<span class="mono accent" id="gen-ram-value">—</span></div>
+    <div class="barline"><div class="fill" id="gen-ram-fill" style="width:0%"></div></div>
+    <div class="resource-meta"><span id="gen-ram-detail">—</span><span id="gen-ram-avail">—</span></div>
+  </article>
+  <article class="panel span4">
+    <div class="between">{{ template "panel-title" (dict "Icon" "alert" "Title" "Alertas activas") }}<span class="tag" id="alerts-count">0</span></div>
+    <div class="alert-list" id="alerts-list"><p class="note">sin alertas activas</p></div>
+  </article>
+  <article class="panel span2">
+    {{ template "panel-title" (dict "Icon" "server" "Title" "Hardware") }}
+    <ul class="info-list" id="hw-list"></ul>
+  </article>
+  <article class="panel span6">
+    {{ template "panel-title" (dict "Icon" "disk" "Title" "Almacenamiento y dispositivos") }}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:4px">
+      <div><p class="eyebrow">Discos físicos</p><div id="disks-list"></div></div>
+      <div><p class="eyebrow">Dispositivos USB</p><ul class="info-list" id="usb-list"></ul></div>
+    </div>
+  </article>
+  <article class="panel span6">
+    <div class="between">{{ template "panel-title" (dict "Icon" "clock" "Title" "Historial de sesiones") }}<span class="note mono">reinicios del host</span></div>
+    <div class="uptime-days" id="uptime-days" role="img" aria-label="Disponibilidad de los últimos 90 días"></div>
+    <div class="uptime-axis"><span id="uptime-days-from">hace 90 días</span><span class="line"></span><span id="uptime-days-pct">—</span><span class="line"></span><span>Hoy</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Duración</th><th>Estado</th></tr></thead><tbody id="sessions-body"></tbody></table></div>
+  </article>
+</div></section>
+{{ end }}

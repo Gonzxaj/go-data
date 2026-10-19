@@ -13,6 +13,7 @@ import (
 	"go-data/internal/storage"
 	"go-data/internal/uptime"
 	"go-data/internal/users"
+	"go-data/internal/web"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -112,6 +113,9 @@ func Build(cfg config.Config) {
 	}
 	mux := http.NewServeMux()
 	h.Register(mux)
+	if err := web.Register(mux, "web/templates", host); err != nil {
+		log.Fatalf("render pages: %v", err)
+	}
 	mux.Handle("/", http.FileServer(http.Dir("web/static")))
 
 	var handler http.Handler = mux
