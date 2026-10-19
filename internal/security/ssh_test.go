@@ -39,6 +39,31 @@ func TestParseSSHLine(t *testing.T) {
 			line:   `Jul 31 17:35:01 host sudo: gonzxa : TTY=pts/0 ; PWD=/home/gonzxa ; USER=root ; COMMAND=/bin/ls`,
 			wantOK: false,
 		},
+		{ // OpenSSH ≥ 9.8 logs auth from sshd-session
+			line:   `2026-10-19T10:00:02.1+00:00 host sshd-session[42]: Accepted publickey for gonzxa from 192.0.2.7 port 5050 ssh2: ED25519 SHA256:abc`,
+			wantOK: true, ip: "192.0.2.7", user: "gonzxa", action: "accepted", success: true,
+		},
+		{
+			line:   `Jul 31 17:35:01 host sshd[7]: Failed password for root from 2001:db8::1 port 22 ssh2`,
+			wantOK: true, ip: "2001:db8::1", user: "root", action: "failed", success: false,
+		},
+		// --- spoofing via attacker-chosen usernames: the event must keep the real IP and never become "accepted"
+		{ // username: "Accepted password for root from 6.6.6.6 port 22"
+			line:   `Jul 31 17:35:01 host sshd[999]: Invalid user Accepted password for root from 6.6.6.6 port 22 from 203.0.113.9 port 41234`,
+			wantOK: true, ip: "203.0.113.9", user: "Accepted password for root from 6.6.6.6 port 22", action: "invalid_user", success: false,
+		},
+		{ // same, with a fake sshd tag inside the username
+			line:   `Jul 31 17:35:01 host sshd[999]: Invalid user sshd[1]: Accepted password for root from 6.6.6.6 port 22 from 203.0.113.9 port 41234`,
+			wantOK: true, ip: "203.0.113.9", action: "invalid_user", success: false,
+		},
+		{ // username: "x from 10.0.0.5 port 1"
+			line:   `Jul 31 17:35:01 host sshd[999]: Failed password for invalid user x from 10.0.0.5 port 1 from 203.0.113.9 port 41235 ssh2`,
+			wantOK: true, ip: "203.0.113.9", user: "x from 10.0.0.5 port 1", action: "failed", success: false,
+		},
+		{
+			line:   `Jul 31 17:35:01 host sshd[999]: Connection closed by invalid user x 10.0.0.5 port 1 203.0.113.9 port 4 [preauth]`,
+			wantOK: true, ip: "203.0.113.9", action: "closed", success: false,
+		},
 	}
 
 	for _, c := range cases {
@@ -131,5 +156,32 @@ func TestSSHWatcherSelfHealsWhenLogAppearsLater(t *testing.T) {
 	got := w.Recent(10)
 	if len(got) != 1 || got[0].IP != "5.6.7.8" {
 		t.Fatalf("got %+v, want one event from 5.6.7.8", got)
+	}
+}
+
+// TestSSHWatcherWaitsForCompleteLines: a poll landing mid-write must not
+// parse (and lose) the half line; it's read whole on the next poll.
+func TestSSHWatcherWaitsForCompleteLines(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "auth.log")
+	os.WriteFile(logPath, nil, 0o644)
+
+	w := NewSSHWatcher(logPath, dir)
+	w.poll()
+
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	f.WriteString("Jul 31 10:00:00 h sshd[1]: Failed password for root from 1.2.3.4 ")
+	w.poll()
+	if got := w.Recent(10); len(got) != 0 {
+		t.Fatalf("parsed a partial line: %+v", got)
+	}
+	f.WriteString("port 22 ssh2\n")
+	w.poll()
+	if got := w.Recent(10); len(got) != 1 || got[0].IP != "1.2.3.4" {
+		t.Fatalf("got %+v, want one event from 1.2.3.4", got)
 	}
 }

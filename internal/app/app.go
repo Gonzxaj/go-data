@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"go-data/internal/alarm"
 	"go-data/internal/api"
 	"go-data/internal/auth"
@@ -15,8 +14,11 @@ import (
 	"go-data/internal/users"
 	"go-data/internal/web"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -116,11 +118,12 @@ func Build(cfg config.Config) {
 	if err := web.Register(mux, "web/templates", host); err != nil {
 		log.Fatalf("render pages: %v", err)
 	}
-	mux.Handle("/", http.FileServer(http.Dir("web/static")))
+	mux.Handle("/", http.FileServer(noDirListing{http.Dir("web/static")}))
 
 	var handler http.Handler = mux
 	switch cfg.AuthMode {
 	case "none":
+		log.Print("WARNING: AUTH_MODE=none — host data is open to anyone who can reach the port")
 		mux.HandleFunc("GET /api/auth/me", auth.ModeInfo("none"))
 	case "basic":
 		if cfg.AuthUser == "" || cfg.AuthPassword == "" {
@@ -139,7 +142,47 @@ func Build(cfg config.Config) {
 	}
 	log.Printf("auth mode: %s", cfg.AuthMode)
 
-	http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), handler)
+	// timeouts: without them a slowloris client holds connections forever
+	srv := &http.Server{
+		Addr:              net.JoinHostPort(cfg.ListenAddr, strconv.Itoa(cfg.Port)),
+		Handler:           secureHeaders(handler),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    64 << 10,
+	}
+	log.Fatal(srv.ListenAndServe())
+}
+
+// secureHeaders blocks framing (clickjacking), MIME sniffing and, via CSP,
+// any script not served by us. style 'unsafe-inline' is for the templates'
+// style="" attributes; it doesn't allow script execution.
+func secureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// noDirListing makes the static file server 404 on directories instead of
+// listing their contents.
+type noDirListing struct{ http.FileSystem }
+
+func (fs noDirListing) Open(name string) (http.File, error) {
+	f, err := fs.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	if st, err := f.Stat(); err != nil || st.IsDir() {
+		f.Close()
+		return nil, os.ErrNotExist
+	}
+	return f, nil
 }
 
 // openUserStore opens DataDir/users.db and, on first run, seeds an admin from

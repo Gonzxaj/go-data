@@ -7,8 +7,11 @@ import (
 	"go-data/internal/domain"
 	"io"
 	"log"
+	"maps"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -42,11 +45,21 @@ type inspectMeta struct {
 	health       string
 }
 
+// newDockerHTTPClient dials DOCKER_HOST when set — tcp://host:port for a
+// read-only socket proxy, or unix:///path — else the local socket.
 func newDockerHTTPClient() *http.Client {
+	network, addr := "unix", dockerSocket
+	if h := os.Getenv("DOCKER_HOST"); h != "" {
+		if a, ok := strings.CutPrefix(h, "tcp://"); ok {
+			network, addr = "tcp", a
+		} else {
+			addr = strings.TrimPrefix(h, "unix://")
+		}
+	}
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, "unix", dockerSocket)
+				return (&net.Dialer{}).DialContext(ctx, network, addr)
 			},
 		},
 		Timeout: 5 * time.Second,
@@ -123,9 +136,15 @@ func (d *DockerCollector) refresh() {
 
 	now := time.Now()
 	out := make([]domain.Container, 0, len(items))
+	seen := make(map[string]bool, len(items))
 	for _, item := range items {
+		seen[item.ID] = true
 		out = append(out, d.buildContainer(item, now))
 	}
+	// drop per-container caches of removed containers, or they grow forever
+	maps.DeleteFunc(d.prevStats, func(id string, _ dockerPrevSample) bool { return !seen[id] })
+	maps.DeleteFunc(d.lastInspect, func(id string, _ time.Time) bool { return !seen[id] })
+	maps.DeleteFunc(d.inspectCache, func(id string, _ inspectMeta) bool { return !seen[id] })
 
 	d.mu.Lock()
 	d.containers = out
@@ -283,14 +302,14 @@ func (d *DockerCollector) refreshVolumeSizes() {
 // ---- Docker Engine API response shapes (only the fields we use) ----
 
 type containerListItem struct {
-	ID      string        `json:"Id"`
-	Names   []string      `json:"Names"`
-	Image   string        `json:"Image"`
-	State   string        `json:"State"`
-	Status  string        `json:"Status"`
-	Ports   []dockerPort  `json:"Ports"`
-	SizeRw  int64         `json:"SizeRw"`
-	Mounts  []dockerMount `json:"Mounts"`
+	ID     string        `json:"Id"`
+	Names  []string      `json:"Names"`
+	Image  string        `json:"Image"`
+	State  string        `json:"State"`
+	Status string        `json:"Status"`
+	Ports  []dockerPort  `json:"Ports"`
+	SizeRw int64         `json:"SizeRw"`
+	Mounts []dockerMount `json:"Mounts"`
 }
 
 func (c containerListItem) name() string {
@@ -328,7 +347,7 @@ type containerStatsResp struct {
 		OnlineCPUs     int    `json:"online_cpus"`
 	} `json:"cpu_stats"`
 	MemoryStats containerMemoryStats `json:"memory_stats"`
-	BlkioStats struct {
+	BlkioStats  struct {
 		IOServiceBytesRecursive []struct {
 			Op    string `json:"op"`
 			Value uint64 `json:"value"`

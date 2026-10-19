@@ -1,21 +1,33 @@
 package security
 
 import (
+	"bytes"
 	"context"
 	"go-data/internal/domain"
 	"go-data/internal/eventlog"
+	"io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 )
 
+// The username is attacker-controlled and may contain spaces, so a client
+// can log in as "Accepted password for root from 6.6.6.6 port 22". Hence
+// the message is matched only after the line's first (real) sshd tag,
+// anchored at both ends, with the IP taken from the line's end where sshd
+// itself writes it. sshd-session is OpenSSH ≥ 9.8's per-connection process.
 var (
-	reFailed      = regexp.MustCompile(`Failed password for (?:invalid user )?(\S+) from ([0-9a-fA-F.:]+) port \d+`)
-	reAccepted    = regexp.MustCompile(`Accepted \S+ for (\S+) from ([0-9a-fA-F.:]+) port \d+`)
-	reInvalidUser = regexp.MustCompile(`Invalid user (\S+) from ([0-9a-fA-F.:]+) port \d+`)
-	reClosed      = regexp.MustCompile(`Connection closed by (?:(?:invalid|authenticating) user \S+ )?([0-9a-fA-F.:]+) port \d+(?: \[preauth\])?`)
+	reSSHTag      = regexp.MustCompile(`sshd(?:-session)?\[\d+\]: `)
+	reFailed      = regexp.MustCompile(`^Failed password for (?:invalid user )?(.*) from ([0-9a-fA-F.:]+) port \d+ ssh2$`)
+	reAccepted    = regexp.MustCompile(`^Accepted \S+ for (\S+) from ([0-9a-fA-F.:]+) port \d+`)
+	reInvalidUser = regexp.MustCompile(`^Invalid user (.*) from ([0-9a-fA-F.:]+) port \d+$`)
+	reClosed      = regexp.MustCompile(`^Connection closed by (?:(?:invalid|authenticating) user .* )?([0-9a-fA-F.:]+) port \d+(?: \[preauth\])?$`)
 )
+
+// maxSSHRead caps one poll's read, so a rotated multi-GB log isn't
+// slurped into memory at once; the rest is picked up on later polls.
+const maxSSHRead = 4 << 20
 
 // candidateLogPaths is tried in order when no explicit path is configured.
 var candidateLogPaths = []string{"/var/log/auth.log", "/var/log/secure"}
@@ -95,15 +107,24 @@ func (w *SSHWatcher) poll() {
 	if _, err := f.Seek(w.offset, 0); err != nil {
 		return
 	}
-	buf := make([]byte, info.Size()-w.offset)
-	n, _ := f.Read(buf)
-	w.offset += int64(n)
+	buf := make([]byte, min(info.Size()-w.offset, maxSSHRead))
+	n, _ := io.ReadFull(f, buf)
+	data := buf[:n]
+	if i := bytes.LastIndexByte(data, '\n'); i >= 0 {
+		data = data[:i+1] // a trailing partial line is re-read whole next poll
+	} else if n < maxSSHRead {
+		return // still mid-line
+	} // else: a single >4MB "line" is garbage; skip it
 
-	for _, line := range strings.Split(string(buf[:n]), "\n") {
+	w.offset += int64(len(data))
+
+	var events []domain.SSHEvent
+	for _, line := range strings.Split(string(data), "\n") {
 		if e, ok := parseSSHLine(line); ok {
-			w.log.Append(e)
+			events = append(events, e)
 		}
 	}
+	w.log.Append(events...)
 }
 
 // resolvePath finds the log file (explicit path or auto-detected) and, if
@@ -133,21 +154,24 @@ func (w *SSHWatcher) Recent(n int) []domain.SSHEvent {
 }
 
 func parseSSHLine(line string) (domain.SSHEvent, bool) {
-	if !strings.Contains(line, "sshd[") {
+	line = strings.TrimSuffix(line, "\r")
+	loc := reSSHTag.FindStringIndex(line) // leftmost = the real tag; the username comes after it
+	if loc == nil {
 		return domain.SSHEvent{}, false
 	}
+	msg := line[loc[1]:]
 	now := time.Now()
 
-	if m := reAccepted.FindStringSubmatch(line); m != nil {
+	if m := reAccepted.FindStringSubmatch(msg); m != nil {
 		return domain.SSHEvent{Time: now, User: m[1], IP: m[2], Action: "accepted", Success: true, Detail: line}, true
 	}
-	if m := reFailed.FindStringSubmatch(line); m != nil {
+	if m := reFailed.FindStringSubmatch(msg); m != nil {
 		return domain.SSHEvent{Time: now, User: m[1], IP: m[2], Action: "failed", Success: false, Detail: line}, true
 	}
-	if m := reInvalidUser.FindStringSubmatch(line); m != nil {
+	if m := reInvalidUser.FindStringSubmatch(msg); m != nil {
 		return domain.SSHEvent{Time: now, User: m[1], IP: m[2], Action: "invalid_user", Success: false, Detail: line}, true
 	}
-	if m := reClosed.FindStringSubmatch(line); m != nil {
+	if m := reClosed.FindStringSubmatch(msg); m != nil {
 		return domain.SSHEvent{Time: now, IP: m[1], Action: "closed", Success: false, Detail: line}, true
 	}
 	return domain.SSHEvent{}, false

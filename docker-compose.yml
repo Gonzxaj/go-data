@@ -12,10 +12,23 @@ services:
     # in this mode, so PORT below is what makes the dashboard still land on
     # :19245 instead of the app's default :9000.
     network_mode: host
+    # Least privilege: NET_ADMIN for the conntrack netlink socket,
+    # DAC_READ_SEARCH to read root/adm-only files (auth.log, DMI, statfs
+    # under /hostfs). Everything else is dropped and the rootfs is read-only.
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
+      - DAC_READ_SEARCH
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # No docker.sock here: even mounted :ro it accepts any API call
+      # (e.g. create a privileged container = root on the host). The
+      # Docker tab goes through docker-proxy below, which only allows GETs.
       - /var/log:/var/log:ro
       - /proc:/hostproc:ro
       - /:/hostfs:ro,rslave
@@ -31,6 +44,9 @@ services:
       - INFLUX_ORG=${INFLUXDB_ORG}
       - INFLUX_BUCKET=${INFLUXDB_BUCKET}
       - DOCKER_ENABLED=true
+      - DOCKER_HOST=tcp://127.0.0.1:2375
+      # Serve plain HTTP only to a TLS reverse proxy on this host:
+      # - LISTEN_ADDR=127.0.0.1
       - SSH_WATCH_ENABLED=true
       - CONN_WATCH_ENABLED=true
       - CONN_WATCH_AUTO=true
@@ -40,10 +56,24 @@ services:
       - AUTH_PASSWORD=${AUTH_PASSWORD}
     depends_on:
       - influx
+      - docker-proxy
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    # read-only API subset: container list/stats/inspect + /system/df
+    environment:
+      - CONTAINERS=1
+      - SYSTEM=1
+      - POST=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:2375:2375"
   influx:
     image: influxdb:2.7
     ports:
-      - "19246:8086"
+      # loopback only: the app reaches it over host networking; the admin
+      # token must not be one guess away from the internet
+      - "127.0.0.1:19246:8086"
     volumes:
       - influx-data:/var/lib/influxdb2
       - influx-config:/etc/influxdb2

@@ -64,11 +64,16 @@ services:
     image: gonzxa/go-data:latest
     ports:
       - "19245:9000"
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, DAC_READ_SEARCH]   # conntrack; read auth.log/DMI
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker tab
       - /var/log:/var/log:ro                            # SSH watch
       - /proc:/hostproc:ro                               # connection watch, partitions
       - /:/hostfs:ro,rslave                              # partition usage (disks tab)
+      - app-data:/app/data                               # users, event logs
     environment:
       - USE_INFLUX=true
       - INFLUX_URL=http://influx:8086
@@ -76,6 +81,7 @@ services:
       - INFLUX_ORG=my-org
       - INFLUX_BUCKET=metrics
       - DOCKER_ENABLED=true
+      - DOCKER_HOST=tcp://docker-proxy:2375   # Docker tab, read-only
       - SSH_WATCH_ENABLED=true
       - CONN_WATCH_ENABLED=true
       - AUTH_MODE=session        # none | basic | session
@@ -83,11 +89,20 @@ services:
       - AUTH_PASSWORD=change-me
     depends_on:
       - influx
+      - docker-proxy
+
+  # Never mount docker.sock into the app: even with :ro it accepts any API
+  # call, e.g. creating a privileged container (= root on the host).
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment: [CONTAINERS=1, SYSTEM=1, POST=0]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   influx:
     image: influxdb:2.7
     ports:
-      - "19246:8086"
+      - "127.0.0.1:19246:8086"   # loopback only; the app uses influx:8086
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
@@ -95,11 +110,14 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=my-org
       - DOCKER_INFLUXDB_INIT_BUCKET=metrics
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=change-me
+
+volumes:
+  app-data:
 ```
 
-Any of the four volume mounts can be dropped if you don't need that tab —
-the app degrades gracefully instead of crashing. Replace every `change-me`
-before exposing this to the internet.
+Any of the host mounts (and `docker-proxy`) can be dropped if you don't need
+that tab — the app degrades gracefully instead of crashing. Replace every
+`change-me` before exposing this to the internet, and put HTTPS in front.
 
 ### Building from source
 
@@ -123,6 +141,8 @@ All settings can be set as environment variables (they override
 | `INFLUX_ORG` | InfluxDB org. | — |
 | `INFLUX_BUCKET` | InfluxDB bucket. | — |
 | `DOCKER_ENABLED` | Show the Docker containers tab. | `true` |
+| `DOCKER_HOST` | Docker API to read from: `tcp://host:port` (a read-only socket proxy, recommended) or `unix:///path`. | `unix:///var/run/docker.sock` |
+| `LISTEN_ADDR` | Interface to bind, e.g. `127.0.0.1` when only a reverse proxy on the same host should reach it. | all |
 | `SSH_WATCH_ENABLED` | Log SSH login attempts (IP, user, success/fail) from the auth log. | `false` |
 | `SSH_LOG_PATH` | Custom auth log path. Leave empty to auto-detect. | auto |
 | `CONN_WATCH_ENABLED` | Log incoming connections (IP + port) — useful for game servers. | `false` |
@@ -132,14 +152,16 @@ All settings can be set as environment variables (they override
 | `DATA_DIR` | Where local logs (reboot history, SSH/connection events) are stored. | `./data` |
 | `HOST_PROC_PATH` | `/proc` path used for connection watching, the CPU top-processes list, and partition detection. Auto-detects `/hostproc` if mounted. | auto |
 | `HOST_ROOT_PATH` | Bind mount of the host's real `/`, used to read actual usage for the partitions listed under each physical disk. Auto-detects `/hostfs` if mounted. Without it, disks still show but with no partitions. | auto |
-| `AUTH_MODE` | How the dashboard is protected: `none` (open to anyone), `basic` (browser's classic HTTP Basic Auth popup, single user) or `session` (login page, multiple accounts with `admin`/`viewer` roles). | `none` |
+| `AUTH_MODE` | How the dashboard is protected: `none` (open to anyone), `basic` (browser's classic HTTP Basic Auth popup, single user) or `session` (login page, multiple accounts with `admin`/`viewer` roles). `none` must be set explicitly. | `session` |
 | `AUTH_USER` | `basic`: the username. `session`: username of the first admin, created on startup only if there are no users yet. | — |
 | `AUTH_PASSWORD` | `basic`: the password. `session`: password of that first admin (min. 8 chars). | — |
 | `AUTH_ENABLED` | Deprecated, kept for existing deployments: when `AUTH_MODE` is unset, `true` means `basic`. | `false` |
 
 ### Login modes
 
-- **`none`** — no login at all. Only use it on a trusted network.
+- **`none`** — no login at all. Only use it on a trusted network; it's
+  never picked by default (an unset `AUTH_MODE` means `session`, which
+  refuses to start without `AUTH_USER`/`AUTH_PASSWORD` on first run).
 - **`basic`** — the browser's built-in username/password popup, with the
   single account from `AUTH_USER`/`AUTH_PASSWORD`. There's no logout.
 - **`session`** — a login page and user accounts stored in
@@ -148,11 +170,12 @@ All settings can be set as environment variables (they override
   changing them has no effect. Manage accounts from the **Usuarios** tab.
   - `admin`: sees everything and can create, edit, deactivate or delete users.
   - `viewer`: sees the whole dashboard but not the Usuarios tab.
-  - Passwords are hashed with bcrypt. Sessions last 7 days in an `HttpOnly`,
-    `SameSite=Strict` cookie. Logging out, deactivating or deleting a user,
+  - Passwords are hashed with bcrypt. Sessions expire after 24 hours of
+    inactivity, in an `HttpOnly`, `SameSite=Strict` cookie. Logging out, deactivating or deleting a user,
     or changing their password ends their sessions immediately.
-  - After 5 failed attempts from the same IP for the same username, logins
-    are blocked for 15 minutes.
+  - After 5 failed attempts from the same IP for the same username, or 20
+    from the same IP for any usernames, logins are blocked for 15 minutes
+    (`basic` mode blocks an IP after 20 wrong passwords too).
   - The last active admin can't be removed, demoted or deactivated, and
     admins can't demote, deactivate or delete themselves.
   - Put HTTPS in front (a reverse proxy) when exposing it to the internet.

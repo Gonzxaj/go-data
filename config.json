@@ -1,7 +1,7 @@
 {
   "use_influx": true,
   "influx_url": "http://influx:8086",
-  "token": "my-token",
+  "token": "",
   "org": "my-org",
   "bucket": "metrics",
 

@@ -86,6 +86,7 @@ func (w *ConnWatcher) poll() {
 	}
 
 	active := map[string]bool{}
+	var events []domain.ConnectionEvent
 	for _, e := range entries {
 		if e.State != procnet.TCPEstablished || !watched[e.LocalPort] {
 			continue
@@ -93,9 +94,10 @@ func (w *ConnWatcher) poll() {
 		key := e.RemoteIP.String() + "|" + strconv.Itoa(e.LocalPort)
 		active[key] = true
 		if !w.prevActive[key] {
-			w.log.Append(domain.ConnectionEvent{Time: time.Now(), IP: e.RemoteIP.String(), LocalPort: e.LocalPort})
+			events = append(events, domain.ConnectionEvent{Time: time.Now(), IP: e.RemoteIP.String(), LocalPort: e.LocalPort})
 		}
 	}
+	w.log.Append(events...)
 	w.prevActive = active
 }
 

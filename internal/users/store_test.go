@@ -110,3 +110,21 @@ func TestSessionsRevoked(t *testing.T) {
 		t.Fatal("session survived user deletion")
 	}
 }
+
+func TestExtendSession(t *testing.T) {
+	s := newStore(t)
+	a, _ := s.Create("admin", "supersecret", RoleAdmin)
+
+	fresh, _, _ := s.CreateSession(a.ID, 24*time.Hour)
+	if _, ok := s.ExtendSession(HashToken(fresh), 24*time.Hour, time.Hour); ok {
+		t.Fatal("fresh session extended: every request would write")
+	}
+	aging, _, _ := s.CreateSession(a.ID, 2*time.Hour)
+	if exp, ok := s.ExtendSession(HashToken(aging), 24*time.Hour, time.Hour); !ok || time.Until(exp) < 23*time.Hour {
+		t.Fatalf("aging session not extended: ok=%v exp=%v", ok, exp)
+	}
+	expired, _, _ := s.CreateSession(a.ID, -time.Minute)
+	if _, ok := s.ExtendSession(HashToken(expired), 24*time.Hour, time.Hour); ok {
+		t.Fatal("expired session revived")
+	}
+}

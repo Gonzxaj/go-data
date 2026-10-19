@@ -28,16 +28,22 @@ func New[T any](dataDir, filename string, capacity int) *Log[T] {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-	os.MkdirAll(dataDir, 0o755)
+	os.MkdirAll(dataDir, 0o700)
 	l := &Log[T]{path: filepath.Join(dataDir, filename), cap: capacity}
 	l.events = l.load()
 	return l
 }
 
-func (l *Log[T]) Append(e T) {
+// Append adds events and rewrites the file once for the whole batch:
+// callers pass everything from one poll together, so a burst (port scan,
+// SSH brute force) costs one rewrite instead of one per event.
+func (l *Log[T]) Append(es ...T) {
+	if len(es) == 0 {
+		return
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.events = append(l.events, e)
+	l.events = append(l.events, es...)
 	if len(l.events) > l.cap {
 		l.events = l.events[len(l.events)-l.cap:]
 	}
@@ -79,7 +85,7 @@ func (l *Log[T]) load() []T {
 
 func (l *Log[T]) persist() {
 	tmp := l.path + ".tmp"
-	f, err := os.Create(tmp)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return
 	}

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"go-data/internal/domain"
+	"slices"
 	"sync"
 )
 
@@ -29,5 +30,5 @@ func (m *MemoryStore) Save(p domain.Metrics) error {
 func (m *MemoryStore) GetAll() []domain.Metrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.data
+	return slices.Clone(m.data) // callers must not share the live backing array
 }

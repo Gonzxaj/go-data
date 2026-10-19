@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -13,6 +14,9 @@ type Config struct {
 	// ignored in that mode, so this is the only way to pick the externally
 	// visible port) — 9000 otherwise.
 	Port int `json:"port,omitempty"`
+	// ListenAddr is the interface to bind, e.g. "127.0.0.1" behind a TLS
+	// reverse proxy; empty = all interfaces.
+	ListenAddr string `json:"listen_addr,omitempty"`
 
 	// UseInflux persists metrics to InfluxDB in addition to the in-memory
 	// ring buffer. The memory buffer itself is not optional: /api/stats and
@@ -51,7 +55,8 @@ type Config struct {
 	//   "basic"   — browser's HTTP Basic Auth popup, single AUTH_USER/AUTH_PASSWORD
 	//   "session" — login page with multiple accounts (admin/viewer), stored in DataDir/users.db;
 	//               AUTH_USER/AUTH_PASSWORD seed the first admin when there are no users yet
-	// When unset, the legacy AuthEnabled flag decides: true → "basic", false → "none".
+	// When unset, the legacy AuthEnabled flag decides: true → "basic", else
+	// "session". "none" is never a default: it must be asked for explicitly.
 	AuthMode     string `json:"auth_mode,omitempty"`
 	AuthEnabled  bool   `json:"auth_enabled"` // deprecated: use AuthMode
 	AuthUser     string `json:"auth_user,omitempty"`
@@ -63,11 +68,16 @@ type Config struct {
 // since they're the per-deployment knob, while config.json stays as the
 // baseline shipped with the image.
 func Load() Config {
-	file, _ := os.ReadFile("config.json")
 	cfg := Config{Port: 9000, DockerEnabled: true, DataDir: "./data", ConnWatchAuto: true, NetMonEnabled: true}
-	json.Unmarshal(file, &cfg)
+	if file, err := os.ReadFile("config.json"); err == nil {
+		// a typo must not silently drop settings (auth_mode among them)
+		if err := json.Unmarshal(file, &cfg); err != nil {
+			log.Fatalf("config.json: %v", err)
+		}
+	}
 
 	cfg.Port = envInt("PORT", cfg.Port)
+	cfg.ListenAddr = envString("LISTEN_ADDR", cfg.ListenAddr)
 	if cfg.Port == 0 {
 		cfg.Port = 9000
 	}
@@ -102,7 +112,7 @@ func Load() Config {
 	cfg.AuthUser = envString("AUTH_USER", cfg.AuthUser)
 	cfg.AuthPassword = envString("AUTH_PASSWORD", cfg.AuthPassword)
 	if cfg.AuthMode == "" {
-		cfg.AuthMode = "none"
+		cfg.AuthMode = "session"
 		if cfg.AuthEnabled {
 			cfg.AuthMode = "basic"
 		}
@@ -139,7 +149,7 @@ func envBool(key string, def bool) bool {
 	}
 	b, err := strconv.ParseBool(v)
 	if err != nil {
-		return def
+		log.Fatalf("%s=%q: not a boolean (use true/false)", key, v)
 	}
 	return b
 }
@@ -151,7 +161,7 @@ func envInt(key string, def int) int {
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return def
+		log.Fatalf("%s=%q: not an integer", key, v)
 	}
 	return n
 }

@@ -50,7 +50,7 @@ func newIPHistoryStore(dataDir string, capacity int) *ipHistoryStore {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-	os.MkdirAll(dataDir, 0o755)
+	os.MkdirAll(dataDir, 0o700)
 	s := &ipHistoryStore{
 		path:      filepath.Join(dataDir, "netmon_ip_history.jsonl"),
 		cap:       capacity,
@@ -193,7 +193,7 @@ func (s *ipHistoryStore) persistLocked() {
 	s.newIPs = false
 	s.lastFlush = time.Now()
 	tmp := s.path + ".tmp"
-	f, err := os.Create(tmp)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return
 	}

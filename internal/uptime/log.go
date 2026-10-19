@@ -57,7 +57,7 @@ func NewLog(dataDir string) *Log {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
-	os.MkdirAll(dataDir, 0o755)
+	os.MkdirAll(dataDir, 0o700)
 	l := &Log{path: filepath.Join(dataDir, "uptime_sessions.jsonl")}
 	l.sessions = l.load()
 	if n := len(l.sessions); n > 0 {
@@ -140,7 +140,7 @@ func (l *Log) load() []Session {
 func (l *Log) persist() {
 	l.lastPersist = time.Now()
 	tmp := l.path + ".tmp"
-	f, err := os.Create(tmp)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return
 	}

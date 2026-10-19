@@ -17,22 +17,28 @@ import (
 
 const (
 	cookieName = "godata_session"
-	sessionTTL = 7 * 24 * time.Hour
+	// sessionTTL is an idle timeout: each request slides it forward, at
+	// most once per sessionRefresh.
+	sessionTTL     = 24 * time.Hour
+	sessionRefresh = time.Hour
 
-	maxLoginFails = 5
-	loginWindow   = 15 * time.Minute
+	maxLoginFails   = 5  // per ip+username
+	maxIPLoginFails = 20 // per ip across usernames, against password spraying
+	loginWindow     = 15 * time.Minute
+	maxUserKeyLen   = 64 // usernames are ≤32; caps limiter memory per entry
 )
 
 // Session gates the dashboard behind a login form backed by users.Store.
 // Unlike BasicAuth it supports several accounts with roles, logout, and
 // server-side revocation (deleting/deactivating a user kicks them out).
 type Session struct {
-	Store   *users.Store
-	limiter *loginLimiter
+	Store     *users.Store
+	limiter   *loginLimiter
+	ipLimiter *loginLimiter
 }
 
 func NewSession(store *users.Store) *Session {
-	s := &Session{Store: store, limiter: &loginLimiter{entries: map[string]*limitEntry{}}}
+	s := &Session{Store: store, limiter: newLoginLimiter(maxLoginFails), ipLimiter: newLoginLimiter(maxIPLoginFails)}
 	go func() {
 		for range time.Tick(time.Hour) {
 			if err := store.PurgeExpiredSessions(); err != nil {
@@ -87,6 +93,9 @@ func (s *Session) Middleware(next http.Handler) http.Handler {
 		if c, err := r.Cookie(cookieName); err == nil {
 			hash := users.HashToken(c.Value)
 			if u, ok := s.Store.SessionUser(hash); ok {
+				if exp, ok := s.Store.ExtendSession(hash, sessionTTL, sessionRefresh); ok {
+					http.SetCookie(w, sessionCookie(r, c.Value, exp))
+				}
 				ctx := context.WithValue(r.Context(), ctxKey{}, current{user: u, tokenHash: hash})
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
@@ -129,43 +138,59 @@ func (s *Session) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := clientIP(r) + "|" + strings.ToLower(body.Username)
-	if wait := s.limiter.blocked(key); wait > 0 {
-		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
-		writeError(w, http.StatusTooManyRequests, "demasiados intentos, probá de nuevo en unos minutos")
+	ip := clientIP(r)
+	name := strings.ToLower(body.Username)
+	if len(name) > maxUserKeyLen {
+		name = name[:maxUserKeyLen]
+	}
+	key := ip + "|" + name
+	if wait := max(s.limiter.blocked(key), s.ipLimiter.blocked(ip)); wait > 0 {
+		tooManyAttempts(w, wait)
 		return
 	}
 
 	u, ok := s.Store.Authenticate(body.Username, body.Password)
 	if !ok {
 		s.limiter.fail(key)
-		log.Printf("login failed: user=%q ip=%s", body.Username, clientIP(r))
+		s.ipLimiter.fail(ip)
+		log.Printf("login failed: user=%q ip=%s", name, ip)
 		writeError(w, http.StatusUnauthorized, "usuario o contraseña incorrectos")
 		return
 	}
-	s.limiter.reset(key)
+	s.limiter.reset(key) // not ipLimiter: one valid account mustn't unlock spraying the rest
 
 	token, expires, err := s.Store.CreateSession(u.ID, sessionTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "no se pudo iniciar sesión")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     cookieName,
-		Value:    token,
-		Path:     "/",
-		Expires:  expires,
-		HttpOnly: true,
-		Secure:   isHTTPS(r),
-		SameSite: http.SameSiteStrictMode,
-	})
+	http.SetCookie(w, sessionCookie(r, token, expires))
 	writeJSON(w, http.StatusOK, meResponse{Mode: "session", User: &u})
 }
 
 func (s *Session) logout(w http.ResponseWriter, r *http.Request) {
 	s.Store.DeleteSession(CurrentSession(r))
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: isHTTPS(r), SameSite: http.SameSiteStrictMode})
+	c := sessionCookie(r, "", time.Time{})
+	c.MaxAge = -1
+	http.SetCookie(w, c)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func sessionCookie(r *http.Request, value string, expires time.Time) *http.Cookie {
+	return &http.Cookie{
+		Name:     cookieName,
+		Value:    value,
+		Path:     "/",
+		Expires:  expires,
+		HttpOnly: true,
+		Secure:   isHTTPS(r),
+		SameSite: http.SameSiteStrictMode,
+	}
+}
+
+func tooManyAttempts(w http.ResponseWriter, wait time.Duration) {
+	w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
+	writeError(w, http.StatusTooManyRequests, "demasiados intentos, probá de nuevo en unos minutos")
 }
 
 func (s *Session) me(w http.ResponseWriter, r *http.Request) {
@@ -183,10 +208,18 @@ func (s *Session) changePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "petición inválida")
 		return
 	}
+	// a stolen cookie mustn't be enough to brute-force the current password
+	key := "pw|" + strconv.FormatInt(u.ID, 10)
+	if wait := s.limiter.blocked(key); wait > 0 {
+		tooManyAttempts(w, wait)
+		return
+	}
 	if !s.Store.VerifyPassword(u.ID, body.Current) {
+		s.limiter.fail(key)
 		writeError(w, http.StatusUnauthorized, "la contraseña actual no es correcta")
 		return
 	}
+	s.limiter.reset(key)
 	if _, err := s.Store.Update(u.ID, users.Update{Password: &body.New}, CurrentSession(r)); err != nil {
 		if errors.Is(err, users.ErrBadPassword) {
 			writeError(w, http.StatusBadRequest, err.Error())
@@ -219,12 +252,17 @@ func ModeInfo(mode string) http.HandlerFunc {
 
 // ---------- login rate limiting ----------
 
-// loginLimiter blocks an ip+username pair after maxLoginFails failures within
-// loginWindow. Keying on the pair (not the username alone) means an attacker
-// can't lock the real admin out from a different address.
+// loginLimiter blocks a key after max failures within loginWindow. Login
+// keys on ip+username (an attacker can't lock the real admin out from a
+// different address) plus a looser per-ip limiter against spraying.
 type loginLimiter struct {
+	max     int
 	mu      sync.Mutex
 	entries map[string]*limitEntry
+}
+
+func newLoginLimiter(max int) *loginLimiter {
+	return &loginLimiter{max: max, entries: map[string]*limitEntry{}}
 }
 
 type limitEntry struct {
@@ -236,7 +274,7 @@ func (l *loginLimiter) blocked(key string) time.Duration {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	e, ok := l.entries[key]
-	if !ok || e.fails < maxLoginFails {
+	if !ok || e.fails < l.max {
 		return 0
 	}
 	if left := loginWindow - time.Since(e.first); left > 0 {

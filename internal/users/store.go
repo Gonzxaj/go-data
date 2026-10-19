@@ -70,7 +70,16 @@ type Store struct {
 
 // Open opens (creating if needed) the SQLite database at path.
 func Open(path string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	// holds bcrypt and session hashes: owner-only, also for DBs created before
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+	if err := os.Chmod(path, 0o600); err != nil {
 		return nil, err
 	}
 	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
@@ -300,6 +309,20 @@ func (s *Store) SessionUser(tokenHash string) (User, bool) {
 		FROM sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`, tokenHash, time.Now().Unix()))
 	return u, err == nil
+}
+
+// ExtendSession slides a live session's expiry to now+ttl once it has less
+// than ttl-refresh left, so only about one request per refresh writes.
+func (s *Store) ExtendSession(tokenHash string, ttl, refresh time.Duration) (time.Time, bool) {
+	now := time.Now()
+	expires := now.Add(ttl)
+	res, err := s.db.Exec(`UPDATE sessions SET expires_at = ? WHERE token_hash = ? AND expires_at > ? AND expires_at < ?`,
+		expires.Unix(), tokenHash, now.Unix(), now.Add(ttl-refresh).Unix())
+	if err != nil {
+		return time.Time{}, false
+	}
+	n, _ := res.RowsAffected()
+	return expires, n > 0
 }
 
 func (s *Store) DeleteSession(tokenHash string) error {

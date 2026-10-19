@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"context"
 	"go-data/internal/domain"
+	"log"
 	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -10,22 +10,30 @@ import (
 )
 
 type InfluxStore struct {
-	write api.WriteAPIBlocking
+	write api.WriteAPI
 }
 
+// NewInfluxStore uses the client's async, batching writer, so a slow or
+// down Influx never stalls the collector tick (its retry buffer is bounded),
+// and write failures are logged instead of silently dropped.
 func NewInfluxStore(url, token, org, bucket string) *InfluxStore {
 	client := influxdb2.NewClient(url, token)
-	return &InfluxStore{
-		write: client.WriteAPIBlocking(org, bucket),
-	}
+	w := client.WriteAPI(org, bucket)
+	go func() {
+		for err := range w.Errors() {
+			log.Printf("influx write: %v", err)
+		}
+	}()
+	return &InfluxStore{write: w}
 }
 
 // WritePoint writes an arbitrary point through the same already-configured
 // client — for callers (like internal/netmon) whose data doesn't fit
 // domain.Metrics's fixed shape, so they don't need a second Influx
-// connection of their own.
+// connection of their own. Errors surface asynchronously in the log.
 func (i *InfluxStore) WritePoint(measurement string, tags map[string]string, fields map[string]interface{}, t time.Time) error {
-	return i.write.WritePoint(context.Background(), influxdb2.NewPoint(measurement, tags, fields, t))
+	i.write.WritePoint(influxdb2.NewPoint(measurement, tags, fields, t))
+	return nil
 }
 
 func (i *InfluxStore) Save(p domain.Metrics) error {
@@ -47,5 +55,6 @@ func (i *InfluxStore) Save(p domain.Metrics) error {
 		},
 		p.Time,
 	)
-	return i.write.WritePoint(context.Background(), point)
+	i.write.WritePoint(point)
+	return nil
 }

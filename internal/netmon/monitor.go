@@ -119,6 +119,9 @@ func (m *Monitor) poll() {
 	active := make(map[string]bool, len(flows))
 	sample := domain.NetSample{Time: now}
 	ips := map[string]bool{}
+	// batched: a port scan opens thousands of flows in one poll, and each
+	// Append rewrites the whole event file
+	var events []domain.NetFlowEvent
 
 	for _, f := range flows {
 		key := fmt.Sprintf("%s|%d|%d|%s", f.RemoteIP, f.RemotePort, f.LocalPort, f.Proto)
@@ -140,12 +143,13 @@ func (m *Monitor) poll() {
 		isNew := !m.prevActive[key]
 		m.ipStore.Observe(f.RemoteIP, now, isNew)
 		if isNew {
-			m.events.Append(domain.NetFlowEvent{
+			events = append(events, domain.NetFlowEvent{
 				Time: now, RemoteIP: f.RemoteIP, RemotePort: f.RemotePort,
 				LocalPort: f.LocalPort, Proto: f.Proto, Direction: f.Direction,
 			})
 		}
 	}
+	m.events.Append(events...)
 	sample.UniqueIPs = len(ips)
 	m.prevActive = active
 

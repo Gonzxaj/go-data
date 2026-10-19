@@ -37,9 +37,11 @@ again.
 | `DISK_MOUNTS` | Which mount points to show in the Disk tab, comma-separated. Empty = auto-detect. | auto |
 | `DATA_DIR` | Where local logs (reboot history, SSH/connection events) are stored. | `./data` |
 | `HOST_PROC_PATH` | `/proc` path used for connection watching and the CPU top-processes list. Auto-detects `/hostproc` if mounted. | auto |
-| `AUTH_ENABLED` | Require HTTP Basic Auth (like nginx's `auth_basic`) for the dashboard and API. Needs `AUTH_USER`/`AUTH_PASSWORD` set, or the app refuses to start. | `false` |
-| `AUTH_USER` | Basic Auth username. | — |
-| `AUTH_PASSWORD` | Basic Auth password. | — |
+| `DOCKER_HOST` | Docker API to read from: `tcp://host:port` (a read-only socket proxy, recommended) or `unix:///path`. | `unix:///var/run/docker.sock` |
+| `LISTEN_ADDR` | Interface to bind, e.g. `127.0.0.1` behind a reverse proxy on the same host. | all |
+| `AUTH_MODE` | `session` (login page, `admin`/`viewer` accounts), `basic` (single-user HTTP Basic Auth) or `none` (open; must be set explicitly). | `session` |
+| `AUTH_USER` | `basic`: the username. `session`: the first admin, created only while there are no users. | — |
+| `AUTH_PASSWORD` | `basic`: the password. `session`: that first admin's password (min. 8 chars). | — |
 
 `SSH_WATCH_ENABLED` needs `/var/log` mounted read-only into the container.
 `CONN_WATCH_ENABLED` needs the host's `/proc` mounted read-only (as
@@ -55,10 +57,15 @@ services:
     image: gonzxa/go-data:latest
     ports:
       - "19245:9000"
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, DAC_READ_SEARCH]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker containers tab
       - /var/log:/var/log:ro # SSH_WATCH_ENABLED
       - /proc:/hostproc:ro # CONN_WATCH_ENABLED
+      - app-data:/app/data
     environment:
       - USE_INFLUX=true
       - INFLUX_URL=http://influx:8086
@@ -66,19 +73,29 @@ services:
       - INFLUX_ORG=my-org
       - INFLUX_BUCKET=metrics
       - DOCKER_ENABLED=true
+      - DOCKER_HOST=tcp://docker-proxy:2375   # Docker tab, read-only
       - SSH_WATCH_ENABLED=true
       - CONN_WATCH_ENABLED=true
       - CONN_WATCH_AUTO=true
-      - AUTH_ENABLED=true
+      - AUTH_MODE=session
       - AUTH_USER=admin
       - AUTH_PASSWORD=change-me
     depends_on:
       - influx
+      - docker-proxy
+
+  # Never mount docker.sock into the app: even with :ro it accepts any API
+  # call, e.g. creating a privileged container (= root on the host).
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment: [CONTAINERS=1, SYSTEM=1, POST=0]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   influx:
     image: influxdb:2.7
     ports:
-      - "19246:8086"
+      - "127.0.0.1:19246:8086"   # loopback only; the app uses influx:8086
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
@@ -86,18 +103,22 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=my-org
       - DOCKER_INFLUXDB_INIT_BUCKET=metrics
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=change-me
+
+volumes:
+  app-data:
 ```
 
-Any of the three `/var/run/docker.sock`, `/var/log`, `/proc` mounts can be
+`docker-proxy` and the `/var/log`, `/proc` mounts can be
 dropped if you don't need that tab — the app degrades gracefully (that
 feature just won't show data) instead of crashing.
 
 Don't use `admin123`-style values for real — replace `change-me` with your
-own token/password before running this anywhere reachable from the internet.
+own token/password before running this anywhere reachable from the internet,
+and put HTTPS (a reverse proxy) in front.
 
 ## API
 
-All endpoints are `GET`, unauthenticated, and return `application/json`. The
+All endpoints require login unless `AUTH_MODE=none` and return `application/json`. The
 web dashboard is just a client of this same API — anything it shows, you can
 query directly.
 
