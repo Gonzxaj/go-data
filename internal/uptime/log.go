@@ -11,11 +11,24 @@ import (
 	"time"
 )
 
-const maxSessions = 200
+const (
+	maxSessions = 200
+	// bootJitter absorbs /proc/uptime rounding: boot times computed a
+	// second apart are the same boot, not a reboot.
+	bootJitter = 5 * time.Second
+	// lastSeenPersist bounds how stale last_seen can be on disk, which is
+	// also the precision of the downtime measured across a reboot.
+	lastSeenPersist = time.Minute
+)
 
 type Session struct {
-	Start time.Time  `json:"start"`
-	End   *time.Time `json:"end"`
+	Start time.Time `json:"start"`
+	// End is the last moment the host was seen up in this session (sessions
+	// written before last_seen existed have the reboot-detection time instead).
+	End *time.Time `json:"end"`
+	// LastSeen is the latest observation of the ongoing session, so a
+	// reboot can close it at when the host was last up, not when it came back.
+	LastSeen *time.Time `json:"last_seen,omitempty"`
 }
 
 func (s Session) Ongoing() bool { return s.End == nil }
@@ -37,6 +50,7 @@ type Log struct {
 	mu           sync.Mutex
 	sessions     []Session
 	lastBootTime time.Time
+	lastPersist  time.Time
 }
 
 func NewLog(dataDir string) *Log {
@@ -66,12 +80,22 @@ func (l *Log) Observe(now time.Time, bootTime time.Time) {
 		l.sessions = append(l.sessions, Session{Start: bootTime})
 		l.lastBootTime = bootTime
 		l.persist()
-	case bootTime.Equal(l.lastBootTime):
-		// same session, nothing to persist every tick
+	case absDur(bootTime.Sub(l.lastBootTime)) <= bootJitter:
+		cur := &l.sessions[len(l.sessions)-1]
+		seen := now
+		cur.LastSeen = &seen
+		if now.Sub(l.lastPersist) >= lastSeenPersist {
+			l.persist()
+		}
 	default:
-		// boot time changed: close the previous session, open a new one
+		// boot time changed: close the previous session at its last
+		// sighting (falls back to now for files without last_seen)
+		prev := &l.sessions[len(l.sessions)-1]
 		end := now
-		l.sessions[len(l.sessions)-1].End = &end
+		if prev.LastSeen != nil {
+			end = *prev.LastSeen
+		}
+		prev.End, prev.LastSeen = &end, nil
 		l.sessions = append(l.sessions, Session{Start: bootTime})
 		l.lastBootTime = bootTime
 		if len(l.sessions) > maxSessions {
@@ -114,6 +138,7 @@ func (l *Log) load() []Session {
 // the file stays tiny (at most maxSessions lines) and a full rewrite is
 // simpler and safer than patching a specific line in place.
 func (l *Log) persist() {
+	l.lastPersist = time.Now()
 	tmp := l.path + ".tmp"
 	f, err := os.Create(tmp)
 	if err != nil {
@@ -131,6 +156,13 @@ func (l *Log) persist() {
 	w.Flush()
 	f.Close()
 	os.Rename(tmp, l.path)
+}
+
+func absDur(d time.Duration) time.Duration {
+	if d < 0 {
+		return -d
+	}
+	return d
 }
 
 // ReadBootTime reads /proc/uptime and returns now - uptime, i.e. the moment
