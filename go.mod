@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/florianl/go-conntrack v0.7.0
 	github.com/influxdata/influxdb-client-go/v2 v2.12.0
-	golang.org/x/crypto v0.57.0
+	golang.org/x/crypto v0.59.0
 	modernc.org/sqlite v1.59.0
 )
 
@@ -22,9 +22,9 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
