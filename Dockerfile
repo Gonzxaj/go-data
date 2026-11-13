@@ -1,5 +1,5 @@
 # ---- build stage: compile a static binary ----
-FROM golang:1.26.6-alpine AS build
+FROM golang:1.26.11-alpine3.24 AS build
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -8,7 +8,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -o go-data ./cmd/server
 
 # ---- runtime stage: just the binary + assets, no Go toolchain ----
-FROM alpine:3.22
+FROM alpine:3.24
 
 RUN apk update && apk upgrade --no-cache && apk add --no-cache dmidecode
 
