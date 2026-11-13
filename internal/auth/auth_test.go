@@ -62,3 +62,22 @@ func TestLoginBlocksPasswordSpraying(t *testing.T) {
 		t.Fatalf("after spraying: %d, want 429", code)
 	}
 }
+
+func TestClientIPTrustsCFHeaderOnlyFromLoopback(t *testing.T) {
+	cases := []struct{ remote, cf, want string }{
+		{"127.0.0.1:5000", "203.0.113.7", "203.0.113.7"}, // via cloudflared
+		{"[::1]:5000", "203.0.113.7", "203.0.113.7"},
+		{"127.0.0.1:5000", "", "127.0.0.1"},
+		{"198.51.100.2:5000", "203.0.113.7", "198.51.100.2"}, // spoof from outside ignored
+	}
+	for _, c := range cases {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = c.remote
+		if c.cf != "" {
+			r.Header.Set("CF-Connecting-IP", c.cf)
+		}
+		if got := clientIP(r); got != c.want {
+			t.Errorf("remote=%s cf=%q: got %s, want %s", c.remote, c.cf, got, c.want)
+		}
+	}
+}
