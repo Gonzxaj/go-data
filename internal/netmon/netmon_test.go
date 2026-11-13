@@ -125,3 +125,16 @@ func TestInboundOnly(t *testing.T) {
 		t.Fatalf("inboundOnly = %+v", got)
 	}
 }
+
+func TestTopNSortsByCountThenKey(t *testing.T) {
+	got := topN(map[string]int{"b": 2, "a": 2, "c": 5, "d": 1}, 3)
+	want := []string{"c", "a", "b"}
+	if len(got) != len(want) {
+		t.Fatalf("len = %d, want %d", len(got), len(want))
+	}
+	for i, k := range want {
+		if got[i].Key != k {
+			t.Fatalf("got[%d] = %q, want %q (%v)", i, got[i].Key, k, got)
+		}
+	}
+}

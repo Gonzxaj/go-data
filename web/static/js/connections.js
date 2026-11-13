@@ -47,7 +47,7 @@ async function tickNetwork() {
     if (!rows.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 5;
+      td.colSpan = 7;
       td.className = "note";
       td.textContent = conns.enabled ? "sin conexiones activas" : "no disponible";
       tr.appendChild(td);
@@ -55,7 +55,7 @@ async function tickNetwork() {
     } else {
       for (const c of rows) {
         const tr = document.createElement("tr");
-        const cells = [c.remote_ip, c.proto.toUpperCase(), String(c.local_port), c.direction === "inbound" ? "entrante" : "saliente", c.state];
+        const cells = [c.remote_ip, String(c.remote_port), c.proto.toUpperCase(), String(c.local_port), c.direction === "inbound" ? "entrante" : "saliente", c.state, fmtEventTime(c.since)];
         for (const text of cells) {
           const td = document.createElement("td");
           td.textContent = text;
@@ -69,7 +69,7 @@ async function tickNetwork() {
     tbody.replaceChildren();
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 5;
+    td.colSpan = 7;
     td.className = "note";
     td.textContent = "no disponible";
     tr.appendChild(td);

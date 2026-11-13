@@ -11,6 +11,7 @@ import (
 	"go-data/internal/domain"
 	"go-data/internal/eventlog"
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -53,7 +54,9 @@ type Monitor struct {
 	ipStore *ipHistoryStore
 	history *sampleHistory
 
-	prevActive map[string]bool
+	// firstSeen remembers when each flow key was first observed, so a flow
+	// is logged once and the dashboard can show how long it's been open.
+	firstSeen map[string]time.Time
 
 	logDegradeOnce sync.Once
 }
@@ -69,7 +72,7 @@ func New(cfg Config, influx PointWriter) *Monitor {
 		events:     eventlog.New[domain.NetFlowEvent](cfg.DataDir, "netmon_events.jsonl", 1000),
 		ipStore:    newIPHistoryStore(cfg.DataDir, cfg.IPHistoryCap),
 		history:    newSampleHistory(360),
-		prevActive: map[string]bool{},
+		firstSeen:  map[string]time.Time{},
 	}
 
 	if !cfg.ForceFallback {
@@ -116,7 +119,8 @@ func (m *Monitor) poll() {
 	}
 	now := time.Now()
 
-	active := make(map[string]bool, len(flows))
+	active := make(map[string]time.Time, len(flows))
+	live := make([]domain.NetFlow, 0, len(flows))
 	sample := domain.NetSample{Time: now}
 	ips := map[string]bool{}
 	// batched: a port scan opens thousands of flows in one poll, and each
@@ -125,7 +129,25 @@ func (m *Monitor) poll() {
 
 	for _, f := range flows {
 		key := fmt.Sprintf("%s|%d|%d|%s", f.RemoteIP, f.RemotePort, f.LocalPort, f.Proto)
-		active[key] = true
+		since, seen := m.firstSeen[key]
+		if !seen {
+			since = now
+			events = append(events, domain.NetFlowEvent{
+				Time: now, RemoteIP: f.RemoteIP, RemotePort: f.RemotePort,
+				LocalPort: f.LocalPort, Proto: f.Proto, Direction: f.Direction,
+			})
+		}
+		active[key] = since
+		m.ipStore.Observe(f.RemoteIP, now, !seen)
+
+		// Torn-down TCP flows linger in conntrack (~120s in time_wait):
+		// still remembered above so they don't re-fire as new, and still
+		// logged if first seen already closing, but not counted as active.
+		if closingTCPStates[f.State] {
+			continue
+		}
+		f.Since = since
+		live = append(live, f)
 		ips[f.RemoteIP] = true
 
 		sample.ActiveTotal++
@@ -139,27 +161,24 @@ func (m *Monitor) poll() {
 		} else {
 			sample.Outbound++
 		}
-
-		isNew := !m.prevActive[key]
-		m.ipStore.Observe(f.RemoteIP, now, isNew)
-		if isNew {
-			events = append(events, domain.NetFlowEvent{
-				Time: now, RemoteIP: f.RemoteIP, RemotePort: f.RemotePort,
-				LocalPort: f.LocalPort, Proto: f.Proto, Direction: f.Direction,
-			})
-		}
 	}
 	m.events.Append(events...)
 	sample.UniqueIPs = len(ips)
-	m.prevActive = active
+	m.firstSeen = active
 
 	m.mu.Lock()
-	m.flows = flows
+	m.flows = live
 	m.capability = capability
 	m.mu.Unlock()
 
 	m.history.Append(sample)
 	m.writeInflux(sample)
+}
+
+// closingTCPStates are conntrack TCP states where at least one side has
+// already closed — the peer is leaving or gone, so the flow isn't "active".
+var closingTCPStates = map[string]bool{
+	"fin_wait": true, "close_wait": true, "last_ack": true, "time_wait": true, "close": true,
 }
 
 // collect tries conntrack first (if it was opened successfully at
@@ -321,14 +340,13 @@ func topN(counts map[string]int, n int) []domain.NetCount {
 	for k, c := range counts {
 		out = append(out, domain.NetCount{Key: k, Count: c})
 	}
-	// simple insertion sort descending by count — n is always small (a
-	// handful to a few hundred distinct keys), no need for sort.Slice's
-	// overhead considerations here, but using it anyway for clarity:
-	for i := 1; i < len(out); i++ {
-		for j := i; j > 0 && out[j].Count > out[j-1].Count; j-- {
-			out[j], out[j-1] = out[j-1], out[j]
+	// ties broken by key so the order is stable between polls
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count != out[j].Count {
+			return out[i].Count > out[j].Count
 		}
-	}
+		return out[i].Key < out[j].Key
+	})
 	if n > 0 && n < len(out) {
 		out = out[:n]
 	}

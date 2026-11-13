@@ -11,7 +11,9 @@ type NetFlow struct {
 	LocalPort  int    `json:"local_port"`
 	Proto      string `json:"proto"`     // tcp | udp
 	Direction  string `json:"direction"` // inbound | outbound
-	State      string `json:"state"`     // tcp: established/time_wait/...; udp: assured/active
+	State      string `json:"state"`     // tcp: established/syn_recv/...; udp: assured/active
+	// Since is when this flow was first observed (poll granularity).
+	Since time.Time `json:"since"`
 }
 
 // NetIPHistory tracks first/last-seen and total distinct connections for a
