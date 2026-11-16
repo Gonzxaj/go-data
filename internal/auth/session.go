@@ -75,6 +75,7 @@ var publicPaths = map[string]bool{
 	"/css/login.css":         true,
 	"/js/login.js":           true,
 	"/js/password-toggle.js": true,
+	"/img/go-data.webp":      true,
 	"/api/auth/login":        true,
 }
 

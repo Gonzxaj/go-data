@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="web/static/img/go-data.webp" alt="go-data logo" width="160">
+
 # go-data
 
 **A lightweight, self-hosted server monitoring dashboard — one Go binary, zero bloat.**

@@ -13,3 +13,4 @@ dialog{border:1px solid var(--border);background:var(--card);color:var(--fg);bor
 @media(prefers-reduced-motion:reduce){.dot{animation:none}}
 .uptime-days{display:flex;gap:2px;height:34px;margin-top:16px}.uptime-day{flex:1;min-width:0;border-radius:2px;background:var(--primary)}.uptime-day.minor{background:var(--warning)}.uptime-day.major{background:var(--crit)}.uptime-day.nodata{background:var(--border)}.uptime-day:hover{opacity:.7}.uptime-axis{display:flex;align-items:center;gap:12px;margin:8px 0 8px;color:var(--muted);font-size:11px}.uptime-axis .line{flex:1;height:1px;background:var(--border)}
 @media(max-width:600px){.uptime-day:nth-child(-n+60){display:none}#uptime-days-from{display:none}}
+img.logo{padding:0;border:0;background:none;border-radius:50%}

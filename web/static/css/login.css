@@ -8,3 +8,4 @@ input{width:100%;font:inherit;font-size:13px;color:var(--fg);background:rgba(7,2
 button{width:100%;margin-top:20px;font:inherit;font-size:13px;font-weight:600;color:var(--bg);background:var(--primary);border:0;border-radius:6px;padding:10px;cursor:pointer}button:disabled{opacity:.6;cursor:default}
 .pw-wrap{position:relative;display:block}.pw-wrap input{padding-right:38px}.pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:30px;height:30px;margin:0;padding:0;display:grid;place-items:center;background:none;border:0;border-radius:4px;color:var(--muted);cursor:pointer}.pw-toggle:hover,.pw-toggle:focus-visible{color:var(--primary)}.pw-toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .error{min-height:16px;margin:12px 0 0;color:var(--crit);font-size:12px}
+img.logo{padding:0;border:0;background:none;border-radius:50%}
